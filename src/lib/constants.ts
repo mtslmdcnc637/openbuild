@@ -15,6 +15,12 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     defaultStyles: { fontSize: '2rem', fontWeight: 'bold', margin: '0.8rem 0' },
   },
   {
+    type: 'h3',
+    label: 'Heading 3',
+    defaultContent: 'Section Heading',
+    defaultStyles: { fontSize: '1.75rem', fontWeight: 'bold', margin: '0.7rem 0' },
+  },
+  {
     type: 'p',
     label: 'Paragraph',
     defaultContent: 'This is a paragraph. You can edit this text.',
