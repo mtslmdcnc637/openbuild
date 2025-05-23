@@ -94,7 +94,7 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
       {...(element.type === 'img' ? {} : element.attributes)} // Avoid spreading src/alt for non-img from main attributes for now
     >
       {renderContent()}
-      {element.children && element.children.map((child, index) => (
+      {element.type !== 'img' && element.children && element.children.map((child, index) => (
         <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
       ))}
     </Tag>
