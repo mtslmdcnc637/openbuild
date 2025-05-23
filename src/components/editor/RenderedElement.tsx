@@ -102,6 +102,9 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     delete wrapperSpecificStyles.height;
     delete wrapperSpecificStyles.objectFit;
 
+    const imgSrc = element.attributes?.src || 'https://placehold.co/100x100.png';
+    const isExternalUserImage = imgSrc !== 'https://placehold.co/100x100.png' && !imgSrc.startsWith('https://placehold.co/') && (imgSrc.startsWith('http://') || imgSrc.startsWith('https://'));
+
 
     // For img, the commonProps (like click and outline) should be on a wrapper div.
     // The next/image itself shouldn't have these interactive props directly if we want styling on the wrapper.
@@ -117,13 +120,14 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
         data-element-type={element.type}
       >
         <Image
-          src={element.attributes?.src || 'https://placehold.co/100x100.png'}
+          src={imgSrc}
           alt={element.attributes?.alt || 'Imagem'}
           width={imageWidth || 100} 
           height={imageHeight || 100} 
           style={{ objectFit: computedStyles.objectFit as CSSProperties['objectFit'] || 'cover' }}
-          data-ai-hint={element.attributes?.src?.includes('placehold.co') ? "abstract placeholder" : ""}
+          data-ai-hint={imgSrc.includes('placehold.co') ? "abstract placeholder" : ""}
           draggable={false}
+          unoptimized={isExternalUserImage}
         />
       </div>
     );
@@ -233,3 +237,5 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     element.content // Render content for p, h1, button, span etc.
   );
 }
+
+    

@@ -17,20 +17,11 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'i.postimg.cc',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'imageio.forbes.com',
-        port: '',
-        pathname: '/**',
-      },
+      // i.postimg.cc and imageio.forbes.com removed as unoptimized=true will be used for user images
     ],
   },
 };
 
 export default nextConfig;
+
+    
