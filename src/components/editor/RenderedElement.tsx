@@ -7,17 +7,19 @@ import type { EditorElement } from '@/types/editor';
 import { useEditor } from '@/contexts/EditorContext';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import * as LucideIcons from 'lucide-react'; // Import all for dynamic access
+import * as LucideIcons from 'lucide-react';
+import { getComputedStyles } from '@/lib/style-utils'; // Import the new helper
 
 interface RenderedElementProps {
   element: EditorElement;
-  path: string; // e.g., "0.1.2" for hierarchical selection or identification
+  path: string;
 }
 
 export function RenderedElement({ element, path }: RenderedElementProps) {
-  const { selectElement, selectedElement, addElement, moveElement, updateElementContent, updateElementAttribute } = useEditor();
+  const { selectElement, selectedElement, addElement, moveElement, updateElementContent, updateElementAttribute, viewportMode } = useEditor();
 
   const isSelected = selectedElement?.id === element.id;
+  const computedStyles = getComputedStyles(element.styles, viewportMode); // Compute styles based on viewport
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -27,11 +29,10 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
   const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only allow dropping on elements that can accept children
     if (['div', 'ul', 'ol', 'li'].includes(element.type)) {
         e.currentTarget.classList.add('drag-over-active');
     } else {
-        e.dataTransfer.dropEffect = "none"; // Indicate not a valid drop target
+        e.dataTransfer.dropEffect = "none";
     }
   };
 
@@ -46,7 +47,7 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     e.preventDefault();
     e.stopPropagation();
      if (!['div', 'ul', 'ol', 'li'].includes(element.type)) {
-      return; // Don't allow dropping on non-container types
+      return;
     }
     e.currentTarget.classList.remove('drag-over-active');
     
@@ -57,16 +58,13 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     if (item.id) { 
         moveElement(item.id, element.id, 'inside');
     } else if (item.type) { 
-        // Special handling for li: only allow li inside ul or ol
         if (item.type === 'li' && !['ul', 'ol'].includes(element.type)) {
-            // console.warn("Cannot drop 'li' directly into non-list element. Try dropping into UL or OL.");
             return;
         }
         addElement(item.type, element.id);
     }
   };
   
-  // Handle input/textarea changes
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (element.type === 'input') {
       updateElementAttribute(element.id, 'value', e.target.value);
@@ -75,10 +73,8 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     }
   };
 
-
-  // Common props for the wrapper/main element
   const commonProps: React.HTMLAttributes<HTMLElement> & { style?: CSSProperties } = {
-    style: element.styles,
+    style: computedStyles, // Use computed styles
     onClick: handleClick,
     className: cn(
       'outline-offset-2 transition-all duration-100 ease-in-out relative', 
@@ -90,32 +86,36 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     'data-element-type': element.type,
   };
   
-  // Assign drag handlers only to droppable elements
   if (['div', 'ul', 'ol', 'li'].includes(element.type)) {
     commonProps.onDragOver = handleDragOver;
     commonProps.onDragLeave = handleDragLeave;
     commonProps.onDrop = handleDrop;
   }
 
-
   if (element.type === 'img') {
-    const imgStyles = { ...element.styles };
+    const imgStyles = { ...computedStyles }; // Use computed styles
     const imageWidth = parseInt(String(imgStyles.width) || '100', 10);
     const imageHeight = parseInt(String(imgStyles.height) || '100', 10);
-    delete imgStyles.width;
-    delete imgStyles.height;
+    // next/image handles width & height via props, so remove them from inline style for the wrapper div
+    // if they are meant for the image itself.
+    // For objectFit, it's better to apply it directly to the Image component style prop.
+    const wrapperSpecificStyles: CSSProperties = { ...imgStyles };
+    delete wrapperSpecificStyles.width;
+    delete wrapperSpecificStyles.height;
+    delete wrapperSpecificStyles.objectFit;
+
 
     return (
       <div 
         {...commonProps}
-        style={{ display: 'inline-block', ...imgStyles }} 
+        style={{ display: 'inline-block', ...wrapperSpecificStyles }} // Apply remaining styles to wrapper
       >
         <Image
           src={element.attributes?.src || 'https://placehold.co/100x100.png'}
-          alt={element.attributes?.alt || 'Image'}
-          width={imageWidth || 100}
-          height={imageHeight || 100}
-          style={{ objectFit: element.styles.objectFit as CSSProperties['objectFit'] || 'cover' }}
+          alt={element.attributes?.alt || 'Imagem'}
+          width={imageWidth || 100} // Use parsed width or default
+          height={imageHeight || 100} // Use parsed height or default
+          style={{ objectFit: computedStyles.objectFit as CSSProperties['objectFit'] || 'cover' }}
           data-ai-hint={element.attributes?.src?.includes('placehold.co') ? "abstract placeholder" : ""}
           draggable={false}
         />
@@ -125,40 +125,35 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
 
   if (element.type === 'icon') {
     const { iconName = 'Smile', size = '24', strokeWidth = '2' } = element.attributes || {};
-    // Ensure iconName is a string and a valid key in LucideIcons
     const validIconName = typeof iconName === 'string' ? iconName : 'Smile';
-    const IconComponent = (LucideIcons as any)[validIconName] || LucideIcons.AlertTriangle; // Fallback to AlertTriangle if name is invalid
+    const IconComponent = (LucideIcons as any)[validIconName] || LucideIcons.AlertTriangle;
 
     const numSize = parseInt(size as string, 10) || 24;
     const numStrokeWidth = parseFloat(strokeWidth as string) || 2;
 
-    // Combine element.styles with default display for wrapper
     const wrapperStyles = {
-      ...element.styles,
-      display: element.styles.display || 'inline-flex', // Default to inline-flex if not specified
-      alignItems: element.styles.alignItems || 'center',
-      justifyContent: element.styles.justifyContent || 'center',
+      ...computedStyles, // Use computed styles
+      display: computedStyles.display || 'inline-flex',
+      alignItems: computedStyles.alignItems || 'center',
+      justifyContent: computedStyles.justifyContent || 'center',
     };
     
-    // Remove specific icon-related style props from commonProps if they exist to avoid conflicts
     const { color, ...restCommonStyles } = commonProps.style || {};
-
 
     return (
       <div 
         {...commonProps}
-        style={wrapperStyles} // Use combined styles for the wrapper
+        style={wrapperStyles}
       >
         <IconComponent
           size={numSize}
-          color={element.styles.color as string || 'currentColor'}
+          color={computedStyles.color as string || 'currentColor'}
           strokeWidth={numStrokeWidth}
-          draggable={false} // Icons themselves are not draggable in this context
+          draggable={false}
         />
       </div>
     );
   }
-
 
   if (element.type === 'hr') {
     return <hr {...commonProps} {...element.attributes} />;
@@ -206,12 +201,22 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
 
   const Tag = element.type as keyof JSX.IntrinsicElements;
 
+  // For non-void elements, pass down children
+  if (React.createElement(Tag).props.children !== undefined && element.children && element.children.length > 0) {
+    return React.createElement(
+      Tag,
+      { ...commonProps, ...element.attributes },
+      element.content,
+      element.children.map((child, index) => (
+        <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
+      ))
+    );
+  }
+  
+  // For void elements or elements without children property in JSX, or no children in data
   return React.createElement(
     Tag,
     { ...commonProps, ...element.attributes },
-    element.content,
-    element.children && element.children.map((child, index) => (
-      <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
-    ))
+    element.content
   );
 }

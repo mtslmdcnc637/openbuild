@@ -12,10 +12,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { StylePropertyInput } from './StylePropertyInput';
 import type { CSSProperties } from 'react';
 import { suggestElementStyle, type SuggestElementStyleInput } from '@/ai/flows/suggest-element-style';
-import { parseCssStringToStyleObject } from '@/lib/style-utils';
+import { parseCssStringToStyleObject, getComputedStyles } from '@/lib/style-utils';
 import { toast } from '@/hooks/use-toast';
 import { Trash2, Wand2, PlusCircle } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+// import * as LucideIcons from 'lucide-react'; // Not used directly here
 
 const commonFontFamilies = [
   { label: "Padrão do Sistema", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
@@ -87,7 +87,9 @@ const objectFitOptions = [
 ];
 
 export function StyleConfigurationPanel() {
-  const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement } = useEditor();
+  const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement, viewportMode } = useEditor();
+  
+  // localStyles will hold the styles for the current viewportMode, or inherited if not set.
   const [localStyles, setLocalStyles] = useState<CSSProperties>({});
   const [content, setContent] = useState<string>('');
   const [elementName, setElementName] = useState<string>('');
@@ -99,7 +101,14 @@ export function StyleConfigurationPanel() {
 
   useEffect(() => {
     if (selectedElement) {
-      setLocalStyles(selectedElement.styles || {});
+      // Get styles for the current breakpoint, falling back to desktop, then empty.
+      // This ensures the panel shows *some* value, prioritizing specificity.
+      const currentBreakpointStyles = selectedElement.styles[viewportMode] || {};
+      const desktopStyles = selectedElement.styles.desktop || {};
+      // For display, we want to show the most specific value. If a tablet style is set, show that. If not, show desktop.
+      // getComputedStyles gives the final applied style, which is good for display.
+      setLocalStyles(getComputedStyles(selectedElement.styles, viewportMode));
+
       if (selectedElement.type === 'input') {
         setContent(String(selectedElement.attributes?.value || ''));
       } else {
@@ -113,7 +122,7 @@ export function StyleConfigurationPanel() {
       setElementName('');
       setAttributes({});
     }
-  }, [selectedElement]);
+  }, [selectedElement, viewportMode]); // Re-run when viewportMode changes
 
   if (!selectedElement) {
     return (
@@ -124,10 +133,19 @@ export function StyleConfigurationPanel() {
   }
 
   const handleStyleChange = (property: keyof CSSProperties, value: string) => {
-    const newStyles = { ...localStyles, [property]: value };
-    setLocalStyles(newStyles);
-    updateElementStyle(selectedElement.id, newStyles);
+    if (!selectedElement) return;
+    // Create new styles object for the current breakpoint based on current localStyles
+    const newBreakpointStyles = { 
+      ...(selectedElement.styles[viewportMode] || selectedElement.styles.desktop || {}), // Start with existing or desktop styles for the breakpoint
+      [property]: value 
+    };
+    // If value is empty, we might want to "unset" it for this breakpoint, so it inherits again.
+    // For simplicity now, an empty value will just be an empty string.
+    // A more advanced version could remove the key if value is empty.
+    setLocalStyles(prev => ({...prev, [property]: value})); // Update local display immediately
+    updateElementStyle(selectedElement.id, { [property]: value }); // Send only the changed property for the current breakpoint
   };
+  
 
   const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const newContent = e.target.value;
@@ -171,16 +189,22 @@ export function StyleConfigurationPanel() {
   };
 
   const applyAiSuggestedStyle = () => {
-    if (!aiSuggestedCss) return;
+    if (!aiSuggestedCss || !selectedElement) return;
     const suggestedStylesObject = parseCssStringToStyleObject(aiSuggestedCss);
-    const newStyles = { ...localStyles, ...suggestedStylesObject };
-    setLocalStyles(newStyles);
-    updateElementStyle(selectedElement.id, newStyles);
-    toast({ title: "Estilos da IA Aplicados", description: "Os estilos sugeridos foram aplicados ao elemento." });
+    
+    // Apply AI suggested styles to the current viewport's styles
+    const currentStylesForBreakpoint = selectedElement.styles[viewportMode] || {};
+    const newStylesForBreakpoint = { ...currentStylesForBreakpoint, ...suggestedStylesObject };
+    
+    updateElementStyle(selectedElement.id, newStylesForBreakpoint); // This updates the specific breakpoint
+    setLocalStyles(prev => ({...prev, ...suggestedStylesObject})); // Update local display
+
+    toast({ title: "Estilos da IA Aplicados", description: `Os estilos sugeridos foram aplicados à visualização ${viewportMode}.` });
   };
   
   const handleAddListItem = () => {
     if (selectedElement && (selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li')) {
+      // This logic might need to be more robust to find the correct parent list (ul/ol)
       const parentListId = selectedElement.type === 'li' ? findParentListId(selectedElement.id) : selectedElement.id;
       if (parentListId) {
         addElement('li', parentListId);
@@ -188,11 +212,14 @@ export function StyleConfigurationPanel() {
     }
   };
 
+  // Placeholder - needs a robust implementation that traverses the element tree in EditorContext
   const findParentListId = (childId: string): string | undefined => {
-    // Placeholder - needs robust implementation
+    // This is a simplified placeholder. A real implementation would search `elements` in context.
+    // For now, assume the selectedElement's parent if it's a list item, or itself if it's a list.
+    // This needs to be improved if deep nesting is common.
+    console.warn("findParentListId is a placeholder and may not work for nested lists.");
     return selectedElement?.id; 
   };
-
 
   const renderContentInput = () => {
     if (['p', 'h1', 'h2', 'h3', 'button', 'span', 'li', 'a', 'label', 'textarea'].includes(selectedElement.type)) {
@@ -329,7 +356,7 @@ export function StyleConfigurationPanel() {
         );
     }
     if (selectedElement.type === 'input') {
-        // Poderia adicionar editor do atributo 'type' aqui
+        // Input type attribute editor could be added here
     } else if (selectedElement.type === 'label') {
         commonInputs.push(
             <div className="space-y-1" key="label-for">
@@ -348,14 +375,16 @@ export function StyleConfigurationPanel() {
 
     return commonInputs.length > 0 ? <>{commonInputs}</> : null;
   };
-
-  const isFlexOrGrid = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(localStyles.display || '');
+  
+  // Use localStyles for display in StylePropertyInput, which reflects the computed/specific styles for the current viewport.
+  const displayStyles = localStyles; 
+  const isFlexOrGrid = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(displayStyles.display || '');
   const canHaveChildren = ['div', 'ul', 'ol', 'li'].includes(selectedElement.type);
 
   return (
     <div className="p-4 border-l h-full bg-card flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Configurar Elemento</h2>
+        <h2 className="text-lg font-semibold text-foreground">Configurar Elemento ({viewportMode})</h2>
         <Button variant="ghost" size="icon" onClick={() => deleteElement(selectedElement.id)} aria-label="Excluir elemento">
             <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
@@ -375,14 +404,13 @@ export function StyleConfigurationPanel() {
             </Button>
           )}
 
-
           <Accordion type="multiple" defaultValue={['attributes', 'layout', 'typography', 'appearance']} className="w-full">
              <AccordionItem value="attributes">
                 <AccordionTrigger className="text-sm font-medium py-2">Atributos HTML</AccordionTrigger>
                 <AccordionContent className="space-y-2 pt-1">
                     {renderAttributeInputs()}
                     {selectedElement.type === 'img' && (
-                        <StylePropertyInput label="Ajuste do Objeto (Object Fit)" propertyName="objectFit" value={localStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Selecione o ajuste"/>
+                        <StylePropertyInput label="Ajuste do Objeto (Object Fit)" propertyName="objectFit" value={displayStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Selecione o ajuste"/>
                     )}
                 </AccordionContent>
             </AccordionItem>
@@ -390,17 +418,17 @@ export function StyleConfigurationPanel() {
             <AccordionItem value="layout">
               <AccordionTrigger className="text-sm font-medium py-2">Layout e Espaçamento</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Largura" propertyName="width" value={localStyles.width} onChange={handleStyleChange} placeholder="auto / 100px / 50%" />
-                <StylePropertyInput label="Altura" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
-                <StylePropertyInput label="Preenchimento (Padding)" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px ou 10px 20px" />
-                <StylePropertyInput label="Margem (Margin)" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px ou 0 auto" />
+                <StylePropertyInput label="Largura" propertyName="width" value={displayStyles.width} onChange={handleStyleChange} placeholder="auto / 100px / 50%" />
+                <StylePropertyInput label="Altura" propertyName="height" value={displayStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
+                <StylePropertyInput label="Preenchimento (Padding)" propertyName="padding" value={displayStyles.padding} onChange={handleStyleChange} placeholder="10px ou 10px 20px" />
+                <StylePropertyInput label="Margem (Margin)" propertyName="margin" value={displayStyles.margin} onChange={handleStyleChange} placeholder="10px ou 0 auto" />
                 {(canHaveChildren || selectedElement.type === 'button' || selectedElement.type === 'input' || selectedElement.type === 'textarea' || selectedElement.type === 'p' || selectedElement.type === 'h1' || selectedElement.type === 'h2' || selectedElement.type === 'h3' || selectedElement.type === 'span' || selectedElement.type === 'label' || selectedElement.type === 'a' || selectedElement.type === 'icon' ) && (
                   <>
-                    <StylePropertyInput label="Exibição (Display)" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Selecione o tipo de display"/>
+                    <StylePropertyInput label="Exibição (Display)" propertyName="display" value={displayStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Selecione o tipo de display"/>
                     {isFlexOrGrid && (
                       <>
-                        <StylePropertyInput label="Alinhar Itens (Align Items)" propertyName="alignItems" value={localStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Alinhar itens"/>
-                        <StylePropertyInput label="Justificar Conteúdo (Justify Content)" propertyName="justifyContent" value={localStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justificar conteúdo"/>
+                        <StylePropertyInput label="Alinhar Itens (Align Items)" propertyName="alignItems" value={displayStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Alinhar itens"/>
+                        <StylePropertyInput label="Justificar Conteúdo (Justify Content)" propertyName="justifyContent" value={displayStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justificar conteúdo"/>
                       </>
                     )}
                   </>
@@ -411,23 +439,23 @@ export function StyleConfigurationPanel() {
             <AccordionItem value="typography">
               <AccordionTrigger className="text-sm font-medium py-2">Tipografia</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Tamanho da Fonte" propertyName="fontSize" value={localStyles.fontSize} onChange={handleStyleChange} placeholder="16px / 1.2em" />
-                <StylePropertyInput label="Cor da Fonte" propertyName="color" value={localStyles.color} onChange={handleStyleChange} type="color" />
-                <StylePropertyInput label="Família da Fonte" propertyName="fontFamily" value={localStyles.fontFamily} onChange={handleStyleChange} type="select" options={commonFontFamilies} placeholder="Selecione a fonte"/>
-                <StylePropertyInput label="Peso da Fonte" propertyName="fontWeight" value={localStyles.fontWeight} onChange={handleStyleChange} type="select" options={fontWeightOptions} placeholder="Selecione o peso" />
-                <StylePropertyInput label="Alinhamento do Texto" propertyName="textAlign" value={localStyles.textAlign} onChange={handleStyleChange} type="select" options={textAlignOptions} placeholder="Selecione o alinhamento"/>
-                <StylePropertyInput label="Altura da Linha" propertyName="lineHeight" value={localStyles.lineHeight} onChange={handleStyleChange} placeholder="1.5 / 20px" />
+                <StylePropertyInput label="Tamanho da Fonte" propertyName="fontSize" value={displayStyles.fontSize} onChange={handleStyleChange} placeholder="16px / 1.2em" />
+                <StylePropertyInput label="Cor da Fonte" propertyName="color" value={displayStyles.color} onChange={handleStyleChange} type="color" />
+                <StylePropertyInput label="Família da Fonte" propertyName="fontFamily" value={displayStyles.fontFamily} onChange={handleStyleChange} type="select" options={commonFontFamilies} placeholder="Selecione a fonte"/>
+                <StylePropertyInput label="Peso da Fonte" propertyName="fontWeight" value={displayStyles.fontWeight} onChange={handleStyleChange} type="select" options={fontWeightOptions} placeholder="Selecione o peso" />
+                <StylePropertyInput label="Alinhamento do Texto" propertyName="textAlign" value={displayStyles.textAlign} onChange={handleStyleChange} type="select" options={textAlignOptions} placeholder="Selecione o alinhamento"/>
+                <StylePropertyInput label="Altura da Linha" propertyName="lineHeight" value={displayStyles.lineHeight} onChange={handleStyleChange} placeholder="1.5 / 20px" />
               </AccordionContent>
             </AccordionItem>
             
             <AccordionItem value="appearance">
               <AccordionTrigger className="text-sm font-medium py-2">Aparência</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Cor de Fundo" propertyName="backgroundColor" value={localStyles.backgroundColor} onChange={handleStyleChange} type="color" />
-                <StylePropertyInput label="Borda" propertyName="border" value={localStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
-                <StylePropertyInput label="Raio da Borda" propertyName="borderRadius" value={localStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
-                <StylePropertyInput label="Opacidade" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
-                 <StylePropertyInput label="Sombra da Caixa (Box Shadow)" propertyName="boxShadow" value={localStyles.boxShadow} onChange={handleStyleChange} placeholder="2px 2px 5px #888" />
+                <StylePropertyInput label="Cor de Fundo" propertyName="backgroundColor" value={displayStyles.backgroundColor} onChange={handleStyleChange} type="color" />
+                <StylePropertyInput label="Borda" propertyName="border" value={displayStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
+                <StylePropertyInput label="Raio da Borda" propertyName="borderRadius" value={displayStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
+                <StylePropertyInput label="Opacidade" propertyName="opacity" value={displayStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
+                 <StylePropertyInput label="Sombra da Caixa (Box Shadow)" propertyName="boxShadow" value={displayStyles.boxShadow} onChange={handleStyleChange} placeholder="2px 2px 5px #888" />
               </AccordionContent>
             </AccordionItem>
 
@@ -448,7 +476,7 @@ export function StyleConfigurationPanel() {
                   />
                 </div>
                 <Button onClick={handleAiStyleSuggest} disabled={isAiLoading} size="sm" className="w-full">
-                  {isAiLoading ? 'Gerando...' : 'Sugerir Estilo com IA'}
+                  {isAiLoading ? 'Gerando...' : `Sugerir Estilo com IA (para ${viewportMode})`}
                 </Button>
                 {aiSuggestedCss && (
                   <div className="mt-2 space-y-2">
@@ -457,7 +485,7 @@ export function StyleConfigurationPanel() {
                       <code>{aiSuggestedCss}</code>
                     </pre>
                     <Button onClick={applyAiSuggestedStyle} size="sm" variant="outline" className="w-full">
-                      Aplicar Estilo Sugerido
+                      Aplicar Estilo Sugerido (em {viewportMode})
                     </Button>
                   </div>
                 )}

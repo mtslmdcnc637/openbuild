@@ -1,4 +1,6 @@
+
 import type { CSSProperties } from 'react';
+import type { ResponsiveStyles, ViewportMode } from '@/types/editor';
 
 /**
  * Parses a CSS string into a React CSSProperties object.
@@ -13,11 +15,11 @@ export function parseCssStringToStyleObject(cssString: string): CSSProperties {
 
   cssString.split(';').forEach(rule => {
     if (!rule.includes(':')) return;
-    const [property, value] = rule.split(/:(.*)/s).map(s => s.trim()); // Use regex to split only on first colon
+    const [property, value] = rule.split(/:(.*)/s).map(s => s.trim());
 
     if (property && value) {
       const camelCaseProperty = property.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-      // @ts-ignore - TS can't guarantee camelCaseProperty is a valid key, but we accept it.
+      // @ts-ignore
       style[camelCaseProperty] = value;
     }
   });
@@ -41,8 +43,6 @@ export function styleObjectToCssString(styles: CSSProperties): string {
 
 /**
  * Converts a React CSSProperties object to an inline style string for HTML elements.
- * Example: { color: "red", fontSize: "16px" }
- * Becomes: "color:red;font-size:16px"
  */
 export function convertToInlineStyle(styles: CSSProperties | undefined): string {
   if (!styles) return "";
@@ -53,4 +53,27 @@ export function convertToInlineStyle(styles: CSSProperties | undefined): string 
       return `${propertyName}:${value}`;
     })
     .join(";");
+}
+
+/**
+ * Computes the final CSSProperties for an element based on the current viewport mode,
+ * applying overrides from tablet and mobile breakpoints over desktop styles.
+ */
+export function getComputedStyles(
+  responsiveStyles: ResponsiveStyles,
+  viewportMode: ViewportMode
+): CSSProperties {
+  let computed: CSSProperties = { ...responsiveStyles.desktop };
+
+  if (viewportMode === 'tablet' || viewportMode === 'mobile') {
+    if (responsiveStyles.tablet) {
+      computed = { ...computed, ...responsiveStyles.tablet };
+    }
+  }
+  if (viewportMode === 'mobile') {
+    if (responsiveStyles.mobile) {
+      computed = { ...computed, ...responsiveStyles.mobile };
+    }
+  }
+  return computed;
 }
