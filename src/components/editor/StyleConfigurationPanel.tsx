@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, ChangeEvent } from 'react';
@@ -48,6 +49,33 @@ const fontWeightOptions = [
   { label: '900', value: '900' },
 ];
 
+const displayOptions = [
+  { label: 'Block', value: 'block' },
+  { label: 'Inline Block', value: 'inline-block' },
+  { label: 'Flex', value: 'flex' },
+  { label: 'Inline Flex', value: 'inline-flex' },
+  { label: 'Grid', value: 'grid' },
+  { label: 'Inline Grid', value: 'inline-grid' },
+  { label: 'None', value: 'none' },
+];
+
+const alignItemsOptions = [
+  { label: 'Start', value: 'flex-start' },
+  { label: 'End', value: 'flex-end' },
+  { label: 'Center', value: 'center' },
+  { label: 'Baseline', value: 'baseline' },
+  { label: 'Stretch', value: 'stretch' },
+];
+
+const justifyContentOptions = [
+  { label: 'Start', value: 'flex-start' },
+  { label: 'End', value: 'flex-end' },
+  { label: 'Center', value: 'center' },
+  { label: 'Space Between', value: 'space-between' },
+  { label: 'Space Around', value: 'space-around' },
+  { label: 'Space Evenly', value: 'space-evenly' },
+];
+
 
 export function StyleConfigurationPanel() {
   const { selectedElement, updateElementStyle, updateElementContent, updateElementName, deleteElement, updateElement } = useEditor();
@@ -84,7 +112,7 @@ export function StyleConfigurationPanel() {
 
   const handleStyleChange = (property: keyof CSSProperties, value: string) => {
     const newStyles = { ...localStyles, [property]: value };
-    setLocalStyles(newStyles);
+    setLocalStyles(newStyles); // Update local state immediately for responsiveness
     updateElementStyle(selectedElement.id, newStyles);
   };
 
@@ -188,6 +216,8 @@ export function StyleConfigurationPanel() {
     return null;
   };
 
+  const isFlexOrGrid = localStyles.display === 'flex' || localStyles.display === 'grid' || localStyles.display === 'inline-flex' || localStyles.display === 'inline-grid';
+
   return (
     <div className="p-4 border-l h-full bg-card flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -214,7 +244,18 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Height" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
                 <StylePropertyInput label="Padding" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px or 10px 20px" />
                 <StylePropertyInput label="Margin" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px or 0 auto" />
-                {/* Add more layout properties like display, flex, grid etc. as complexity grows */}
+                {selectedElement.type === 'div' && (
+                  <>
+                    <StylePropertyInput label="Display" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Select display type"/>
+                    {isFlexOrGrid && (
+                      <>
+                        <StylePropertyInput label="Align Items" propertyName="alignItems" value={localStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Align items"/>
+                        <StylePropertyInput label="Justify Content" propertyName="justifyContent" value={localStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justify content"/>
+                        {/* Add more flex/grid properties like flexDirection, flexWrap, gap etc. as needed */}
+                      </>
+                    )}
+                  </>
+                )}
               </AccordionContent>
             </AccordionItem>
 
@@ -236,7 +277,7 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Background Color" propertyName="backgroundColor" value={localStyles.backgroundColor} onChange={handleStyleChange} type="color" />
                 <StylePropertyInput label="Border" propertyName="border" value={localStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
                 <StylePropertyInput label="Border Radius" propertyName="borderRadius" value={localStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
-                <StylePropertyInput label="Opacity" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" />
+                <StylePropertyInput label="Opacity" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
               </AccordionContent>
             </AccordionItem>
 
@@ -278,3 +319,4 @@ export function StyleConfigurationPanel() {
     </div>
   );
 }
+
