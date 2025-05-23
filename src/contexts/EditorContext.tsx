@@ -3,13 +3,13 @@
 
 import type { CSSProperties } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { EditorElement, DraggableItem } from '@/types/editor';
+import type { EditorElement, DraggableItem, DraggableItemType } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
 
 interface EditorContextType {
   elements: EditorElement[];
   selectedElement: EditorElement | null;
-  addElement: (itemType: DraggableItem['type'], parentId?: string) => void;
+  addElement: (itemType: DraggableItemType, parentId?: string) => void;
   updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
   updateElementStyle: (elementId: string, newStyles: CSSProperties) => void;
   updateElementContent: (elementId: string, content: string) => void; // For elements where content means innerText/value
@@ -81,7 +81,6 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   ): EditorElement[] => {
     return elementsArray.map(el => {
       if (el.id === parentId) {
-        // Ensure children array exists
         const childrenArray = el.children || [];
         return { ...el, children: [...childrenArray, newElement] };
       }
@@ -92,28 +91,100 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  const addElement = useCallback((itemType: DraggableItem['type'], parentId?: string) => {
+  const addElement = useCallback((itemType: DraggableItemType, parentId?: string) => {
+    if (itemType === 'card') {
+      const cardContainerId = crypto.randomUUID();
+      const cardContainer: EditorElement = {
+        id: cardContainerId,
+        type: 'div',
+        name: 'Card Container',
+        styles: {
+          padding: '1rem',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: 'var(--radius)',
+          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+          width: '300px',
+          backgroundColor: 'hsl(var(--card))',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem'
+        },
+        attributes: {},
+        children: [],
+      };
+
+      const childTemplates: Array<Partial<EditorElement> & { type: EditorElement['type']}> = [
+        { 
+          type: 'img', 
+          name: 'Card Image',
+          attributes: { src: 'https://placehold.co/300x200.png', alt: 'Card image' },
+          styles: { width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 'calc(var(--radius) - 4px)' } // inner radius
+        },
+        { 
+          type: 'h3', 
+          name: 'Card Title',
+          content: 'Card Title',
+          styles: { margin: '0', fontSize: '1.25rem', fontWeight: 'bold' }
+        },
+        { 
+          type: 'p', 
+          name: 'Card Text',
+          content: 'This is some card text content. Describe the item or feature here.',
+          styles: { margin: '0', fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))', lineHeight: '1.5' }
+        },
+        { 
+          type: 'button', 
+          name: 'Card Button',
+          content: 'Learn More',
+          styles: { alignSelf: 'flex-start' } // Use default button styles from constants + this
+        },
+      ];
+      
+      cardContainer.children = childTemplates.map(childTemplate => {
+        const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type)!;
+        return {
+            id: crypto.randomUUID(),
+            type: childTemplate.type,
+            name: childTemplate.name || `${elDetails.label} (Card)`,
+            content: childTemplate.content || elDetails.defaultContent,
+            attributes: {...elDetails.defaultAttributes, ...childTemplate.attributes},
+            styles: {...elDetails.defaultStyles, ...childTemplate.styles},
+            children: []
+        };
+      });
+      
+      if (parentId) {
+        setElements(prevElements => addElementToParent(prevElements, parentId, cardContainer));
+      } else {
+        setElements(prevElements => [...prevElements, cardContainer]);
+      }
+      selectElement(cardContainerId);
+      return;
+    }
+
+
     const itemTemplate = AVAILABLE_ELEMENTS.find(el => el.type === itemType);
     if (!itemTemplate) return;
 
     const newElement: EditorElement = {
       id: crypto.randomUUID(),
-      type: itemTemplate.type,
+      type: itemTemplate.type as EditorElement['type'], // Cast because itemType can be 'card' here
       name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`,
       content: itemTemplate.defaultContent,
       attributes: itemTemplate.defaultAttributes ? { ...itemTemplate.defaultAttributes } : {},
       styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {},
-      children: [], // Initialize children as empty array
+      children: [],
     };
 
-    if (itemTemplate.type === 'ul' || itemTemplate.type === 'ol') {
+    if ((itemTemplate.type === 'ul' || itemTemplate.type === 'ol') && newElement.type !== 'card') { // Ensure newElement.type is not card
+      const listItemTemplate = AVAILABLE_ELEMENTS.find(el => el.type === 'li');
       const listItem: EditorElement = {
         id: crypto.randomUUID(),
         type: 'li',
         name: 'List Item',
-        content: 'List item',
-        attributes: {},
-        styles: { marginBottom: '0.25rem' },
+        content: listItemTemplate?.defaultContent || 'List item',
+        attributes: listItemTemplate?.defaultAttributes || {},
+        styles: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' },
         children: [],
       };
       newElement.children.push(listItem);
@@ -122,25 +193,21 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (parentId) {
       const parentElement = findElementRecursive(elements, parentId);
-      if (parentElement && (parentElement.type === 'div' || parentElement.type === 'ul' || parentElement.type === 'ol' || (parentElement.type === 'li' && newElement.type !== 'li'))) { // Added more checks
+      if (parentElement && (parentElement.type === 'div' || parentElement.type === 'ul' || parentElement.type === 'ol' || (parentElement.type === 'li' && newElement.type !== 'li'))) {
          setElements(prevElements => addElementToParent(prevElements, parentId, newElement));
       } else if (parentElement && parentElement.type === 'li' && newElement.type === 'li') {
-        // If trying to add 'li' to 'li', add to parent 'ul'/'ol' instead (complex, needs parent traversal or different strategy)
-        // For now, disallow or add to root if parent is 'li' and new item is 'li'
          setElements(prevElements => [...prevElements, newElement]);
       } else {
-        // If parent is not a valid container, add to root
         setElements(prevElements => [...prevElements, newElement]);
       }
     } else {
       setElements(prevElements => [...prevElements, newElement]);
     }
     selectElement(newElement.id);
-  }, [elements]); // Added elements to dependency array
+  }, [elements]); 
 
   const updateElement = useCallback((elementId: string, updates: Partial<EditorElement>) => {
     setElements(prevElements => updateElementRecursive(prevElements, elementId, updates));
-    // Update selectedElement state if it's the one being modified
     if (selectedElement?.id === elementId) {
       setSelectedElement(prevSelected => {
         if (!prevSelected) return null;
@@ -154,14 +221,13 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return updatedSelected;
       });
     }
-  }, [selectedElement?.id]); // Removed elements from dep array as it's already in setElements
+  }, [selectedElement?.id]); 
   
   const updateElementStyle = useCallback((elementId: string, newStyles: CSSProperties) => {
     updateElement(elementId, { styles: newStyles });
   }, [updateElement]);
 
   const updateElementContent = useCallback((elementId: string, content: string) => {
-    // For textarea, content is its value. For input type text, attribute 'value' is preferred.
     const element = findElementRecursive(elements, elementId);
     if (element && element.type === 'input') {
        updateElement(elementId, { attributes: { ...element.attributes, value: content } });
@@ -201,6 +267,9 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const moveElement = useCallback((draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => {
     console.log("Move element:", draggedId, targetId, position);
+    // Placeholder for DND reordering logic - This needs a robust implementation
+    // For example, removing the element and re-inserting it at the new position
+    // Needs to handle hierarchical structures correctly.
   }, []);
 
 

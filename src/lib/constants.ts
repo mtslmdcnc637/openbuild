@@ -88,7 +88,7 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
     // Children (li) will be added by EditorContext
   },
-  // 'li' is not directly draggable but created by 'ul'/'ol'
+  // 'li' is not directly draggable but created by 'ul'/'ol' or 'Add List Item' button
   {
     type: 'a',
     label: 'Link',
@@ -134,5 +134,10 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     defaultContent: 'Label Text',
     defaultAttributes: { htmlFor: '' },
     defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: 'medium' },
+  },
+  {
+    type: 'card', // This is a meta-type for the panel, it will create a div with children
+    label: 'Card',
+    // defaultStyles, defaultContent, defaultAttributes are handled by EditorContext for 'card'
   },
 ];

@@ -19,6 +19,7 @@ export type EditorElementType =
   | 'textarea' // Form textarea
   | 'label' // Form label
   | 'icon'; // Icon element
+  // 'card' is not a direct HTML element type, but a DraggableItem type that creates a structure.
 
 export interface EditorElement {
   id: string;
@@ -42,8 +43,10 @@ export interface EditorElement {
   children: EditorElement[]; // For nesting
 }
 
+export type DraggableItemType = EditorElementType | 'card'; // 'card' is a special draggable type
+
 export interface DraggableItem {
-  type: EditorElementType;
+  type: DraggableItemType;
   label: string;
   defaultStyles?: CSSProperties;
   defaultContent?: string;
