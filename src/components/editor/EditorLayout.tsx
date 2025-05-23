@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DraggableElementsPanel } from './DraggableElementsPanel';
 import { CanvasArea } from './CanvasArea';
 import { StyleConfigurationPanel } from './StyleConfigurationPanel';
@@ -9,13 +9,14 @@ import { CodeCanvasLogo } from '@/components/icons/CodeCanvasLogo';
 import { Button } from '@/components/ui/button';
 import { useEditor } from '@/contexts/EditorContext';
 import { generateHtmlDocument, downloadHtmlFile } from '@/lib/html-generator';
-import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize } from 'lucide-react';
+import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import type { ViewportMode } from '@/types/editor';
 import { cn } from '@/lib/utils';
 
 export function EditorLayout() {
   const { elements, viewportMode, setViewportMode, pageSettings, isCanvasFullScreen, toggleCanvasFullScreen } = useEditor();
+  const [isBrowserFullScreen, setIsBrowserFullScreen] = useState(false);
 
   const handleExportHtml = () => {
     const htmlContent = generateHtmlDocument(elements, pageSettings);
@@ -35,6 +36,30 @@ export function EditorLayout() {
     { mode: 'tablet', icon: Tablet, label: 'Tablet' },
     { mode: 'mobile', icon: Smartphone, label: 'Mobile' },
   ];
+
+  const handleToggleBrowserFullScreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Erro ao tentar entrar em tela cheia: ${err.message} (${err.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsBrowserFullScreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, []);
+
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
@@ -62,14 +87,27 @@ export function EditorLayout() {
               variant={isCanvasFullScreen ? 'default' : 'outline'}
               size="icon"
               onClick={toggleCanvasFullScreen}
-              aria-label={isCanvasFullScreen ? "Sair da Tela Cheia" : "Tela Cheia do Canvas"}
-              title={isCanvasFullScreen ? "Sair da Tela Cheia" : "Tela Cheia do Canvas"}
+              aria-label={isCanvasFullScreen ? "Sair da Tela Cheia do Canvas" : "Tela Cheia do Canvas"}
+              title={isCanvasFullScreen ? "Sair da Tela Cheia do Canvas" : "Tela Cheia do Canvas"}
               className={cn(
                 "h-8 w-8",
                 isCanvasFullScreen ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {isCanvasFullScreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant={isBrowserFullScreen ? 'default' : 'outline'}
+              size="icon"
+              onClick={handleToggleBrowserFullScreen}
+              aria-label={isBrowserFullScreen ? "Sair da Tela Cheia" : "Entrar em Tela Cheia"}
+              title={isBrowserFullScreen ? "Sair da Tela Cheia" : "Entrar em Tela Cheia"}
+              className={cn(
+                "h-8 w-8",
+                isBrowserFullScreen ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {isBrowserFullScreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
             </Button>
         </div>
 
