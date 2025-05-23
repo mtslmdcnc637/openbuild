@@ -1,3 +1,4 @@
+
 import type { DraggableItem } from '@/types/editor';
 
 export const AVAILABLE_ELEMENTS: DraggableItem[] = [
@@ -61,5 +62,64 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     label: 'Text Span',
     defaultContent: 'Inline text',
     defaultStyles: { fontSize: '1rem' },
+  },
+  {
+    type: 'ul',
+    label: 'Unordered List',
+    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
+    // Children (li) will be added by EditorContext
+  },
+  {
+    type: 'ol',
+    label: 'Ordered List',
+    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
+    // Children (li) will be added by EditorContext
+  },
+  // 'li' is not directly draggable but created by 'ul'/'ol'
+  {
+    type: 'a',
+    label: 'Link',
+    defaultContent: 'Link Text',
+    defaultAttributes: { href: '#' },
+    defaultStyles: { color: 'hsl(var(--primary))', textDecoration: 'underline', cursor: 'pointer' },
+  },
+  {
+    type: 'hr',
+    label: 'Divider (HR)',
+    defaultStyles: { borderTop: '1px solid hsl(var(--border))', margin: '1rem 0', height: 'auto', width: '100%' },
+  },
+  {
+    type: 'input',
+    label: 'Text Input',
+    // No defaultContent for input, value is an attribute
+    defaultAttributes: { type: 'text', placeholder: 'Enter text...' },
+    defaultStyles: {
+      padding: '0.5rem',
+      border: '1px solid hsl(var(--input))',
+      borderRadius: 'var(--radius)',
+      width: '100%',
+      boxSizing: 'border-box', // Ensure padding and border are inside width
+    },
+  },
+  {
+    type: 'textarea',
+    label: 'Textarea',
+    defaultContent: '', // Content will be the value
+    defaultAttributes: { placeholder: 'Enter more text...' },
+    defaultStyles: {
+      padding: '0.5rem',
+      border: '1px solid hsl(var(--input))',
+      borderRadius: 'var(--radius)',
+      minHeight: '80px',
+      width: '100%',
+      boxSizing: 'border-box',
+    },
+  },
+  {
+    type: 'label',
+    label: 'Label',
+    defaultContent: 'Label Text',
+    defaultAttributes: { htmlFor: '' },
+    defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: 'medium' },
   },
 ];

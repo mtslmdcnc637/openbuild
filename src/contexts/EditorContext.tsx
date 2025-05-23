@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { CSSProperties } from 'react';
@@ -11,7 +12,8 @@ interface EditorContextType {
   addElement: (itemType: DraggableItem['type'], parentId?: string) => void;
   updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
   updateElementStyle: (elementId: string, newStyles: CSSProperties) => void;
-  updateElementContent: (elementId: string, content: string) => void;
+  updateElementContent: (elementId: string, content: string) => void; // For elements where content means innerText/value
+  updateElementAttribute: (elementId: string, attributeName: string, value: string) => void;
   updateElementName: (elementId: string, name: string) => void;
   selectElement: (elementId: string | null) => void;
   deleteElement: (elementId: string) => void;
@@ -43,7 +45,14 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   ): EditorElement[] => {
     return elementsArray.map(el => {
       if (el.id === elementId) {
-        return { ...el, ...updates, styles: { ...el.styles, ...updates.styles } };
+        const newEl = { ...el, ...updates };
+        if (updates.styles) {
+          newEl.styles = { ...el.styles, ...updates.styles };
+        }
+        if (updates.attributes) {
+          newEl.attributes = { ...el.attributes, ...updates.attributes };
+        }
+        return newEl;
       }
       if (el.children && el.children.length > 0) {
         return { ...el, children: updateElementRecursive(el.children, elementId, updates) };
@@ -72,7 +81,9 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   ): EditorElement[] => {
     return elementsArray.map(el => {
       if (el.id === parentId) {
-        return { ...el, children: [...el.children, newElement] };
+        // Ensure children array exists
+        const childrenArray = el.children || [];
+        return { ...el, children: [...childrenArray, newElement] };
       }
       if (el.children && el.children.length > 0) {
         return { ...el, children: addElementToParent(el.children, parentId, newElement) };
@@ -88,38 +99,85 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newElement: EditorElement = {
       id: crypto.randomUUID(),
       type: itemTemplate.type,
-      name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`, // Simple unique name
+      name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`,
       content: itemTemplate.defaultContent,
       attributes: itemTemplate.defaultAttributes ? { ...itemTemplate.defaultAttributes } : {},
       styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {},
-      children: [],
+      children: [], // Initialize children as empty array
     };
 
+    if (itemTemplate.type === 'ul' || itemTemplate.type === 'ol') {
+      const listItem: EditorElement = {
+        id: crypto.randomUUID(),
+        type: 'li',
+        name: 'List Item',
+        content: 'List item',
+        attributes: {},
+        styles: { marginBottom: '0.25rem' },
+        children: [],
+      };
+      newElement.children.push(listItem);
+    }
+
+
     if (parentId) {
-      setElements(prevElements => addElementToParent(prevElements, parentId, newElement));
+      const parentElement = findElementRecursive(elements, parentId);
+      if (parentElement && (parentElement.type === 'div' || parentElement.type === 'ul' || parentElement.type === 'ol' || (parentElement.type === 'li' && newElement.type !== 'li'))) { // Added more checks
+         setElements(prevElements => addElementToParent(prevElements, parentId, newElement));
+      } else if (parentElement && parentElement.type === 'li' && newElement.type === 'li') {
+        // If trying to add 'li' to 'li', add to parent 'ul'/'ol' instead (complex, needs parent traversal or different strategy)
+        // For now, disallow or add to root if parent is 'li' and new item is 'li'
+         setElements(prevElements => [...prevElements, newElement]);
+      } else {
+        // If parent is not a valid container, add to root
+        setElements(prevElements => [...prevElements, newElement]);
+      }
     } else {
       setElements(prevElements => [...prevElements, newElement]);
     }
     selectElement(newElement.id);
-  }, []);
+  }, [elements]); // Added elements to dependency array
 
   const updateElement = useCallback((elementId: string, updates: Partial<EditorElement>) => {
     setElements(prevElements => updateElementRecursive(prevElements, elementId, updates));
+    // Update selectedElement state if it's the one being modified
     if (selectedElement?.id === elementId) {
-       const currentSelected = findElementRecursive(elements, elementId);
-       if (currentSelected) {
-         setSelectedElement({ ...currentSelected, ...updates, styles: { ...currentSelected.styles, ...updates.styles } });
-       }
+      setSelectedElement(prevSelected => {
+        if (!prevSelected) return null;
+        const updatedSelected = { ...prevSelected, ...updates };
+        if (updates.styles) {
+          updatedSelected.styles = { ...prevSelected.styles, ...updates.styles };
+        }
+        if (updates.attributes) {
+          updatedSelected.attributes = { ...prevSelected.attributes, ...updates.attributes };
+        }
+        return updatedSelected;
+      });
     }
-  }, [elements, selectedElement?.id]);
+  }, [selectedElement?.id]); // Removed elements from dep array as it's already in setElements
   
   const updateElementStyle = useCallback((elementId: string, newStyles: CSSProperties) => {
     updateElement(elementId, { styles: newStyles });
   }, [updateElement]);
 
   const updateElementContent = useCallback((elementId: string, content: string) => {
-    updateElement(elementId, { content });
-  }, [updateElement]);
+    // For textarea, content is its value. For input type text, attribute 'value' is preferred.
+    const element = findElementRecursive(elements, elementId);
+    if (element && element.type === 'input') {
+       updateElement(elementId, { attributes: { ...element.attributes, value: content } });
+    } else {
+       updateElement(elementId, { content });
+    }
+  }, [updateElement, elements]);
+
+  const updateElementAttribute = useCallback((elementId: string, attributeName: string, value: string) => {
+    const currentElement = findElementRecursive(elements, elementId);
+    if (currentElement) {
+      const newAttributes = { ...currentElement.attributes, [attributeName]: value };
+      updateElement(elementId, { attributes: newAttributes });
+    }
+  }, [updateElement, elements]);
+
 
   const updateElementName = useCallback((elementId: string, name: string) => {
     updateElement(elementId, { name });
@@ -141,13 +199,8 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [selectedElement?.id]);
 
-  // Placeholder for future drag-and-drop reordering logic
   const moveElement = useCallback((draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => {
-    // Complex logic for reordering elements, including nesting.
-    // This would involve finding the dragged element, removing it from its current position,
-    // and inserting it at the new position relative to the target.
     console.log("Move element:", draggedId, targetId, position);
-    // For now, this is a no-op. Full DND reordering is complex.
   }, []);
 
 
@@ -160,6 +213,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateElement,
         updateElementStyle,
         updateElementContent,
+        updateElementAttribute,
         updateElementName,
         selectElement,
         deleteElement,

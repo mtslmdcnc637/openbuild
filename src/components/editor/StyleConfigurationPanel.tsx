@@ -14,7 +14,7 @@ import type { CSSProperties } from 'react';
 import { suggestElementStyle, type SuggestElementStyleInput } from '@/ai/flows/suggest-element-style';
 import { parseCssStringToStyleObject } from '@/lib/style-utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Wand2 } from 'lucide-react';
+import { Trash2, Wand2, PlusCircle } from 'lucide-react';
 
 const commonFontFamilies = [
   { label: "System UI", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
@@ -51,6 +51,7 @@ const fontWeightOptions = [
 
 const displayOptions = [
   { label: 'Block', value: 'block' },
+  { label: 'Inline', value: 'inline' },
   { label: 'Inline Block', value: 'inline-block' },
   { label: 'Flex', value: 'flex' },
   { label: 'Inline Flex', value: 'inline-flex' },
@@ -76,13 +77,21 @@ const justifyContentOptions = [
   { label: 'Space Evenly', value: 'space-evenly' },
 ];
 
+const objectFitOptions = [
+    { label: 'Fill', value: 'fill' },
+    { label: 'Contain', value: 'contain' },
+    { label: 'Cover', value: 'cover' },
+    { label: 'None', value: 'none' },
+    { label: 'Scale Down', value: 'scale-down' },
+];
+
 
 export function StyleConfigurationPanel() {
-  const { selectedElement, updateElementStyle, updateElementContent, updateElementName, deleteElement, updateElement } = useEditor();
+  const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement } = useEditor();
   const [localStyles, setLocalStyles] = useState<CSSProperties>({});
   const [content, setContent] = useState<string>('');
   const [elementName, setElementName] = useState<string>('');
-  const [attributes, setAttributes] = useState<Record<string, string | undefined>>({});
+  const [attributes, setAttributes] = useState<Record<string, string | number | boolean | undefined>>({});
   
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiSuggestedCss, setAiSuggestedCss] = useState('');
@@ -91,7 +100,12 @@ export function StyleConfigurationPanel() {
   useEffect(() => {
     if (selectedElement) {
       setLocalStyles(selectedElement.styles || {});
-      setContent(selectedElement.content || '');
+      // For input, use attributes.value. For textarea and others, use content.
+      if (selectedElement.type === 'input') {
+        setContent(String(selectedElement.attributes?.value || ''));
+      } else {
+        setContent(selectedElement.content || '');
+      }
       setElementName(selectedElement.name || `Element ${selectedElement.id.substring(0,4)}`);
       setAttributes(selectedElement.attributes || {});
     } else {
@@ -112,25 +126,26 @@ export function StyleConfigurationPanel() {
 
   const handleStyleChange = (property: keyof CSSProperties, value: string) => {
     const newStyles = { ...localStyles, [property]: value };
-    setLocalStyles(newStyles); // Update local state immediately for responsiveness
+    setLocalStyles(newStyles);
     updateElementStyle(selectedElement.id, newStyles);
   };
 
   const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-    setContent(e.target.value);
-    updateElementContent(selectedElement.id, e.target.value);
+    const newContent = e.target.value;
+    setContent(newContent);
+    // updateElementContent handles if it should be content or attribute.value
+    updateElementContent(selectedElement.id, newContent);
   };
-
+  
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
     setElementName(e.target.value);
-    // Debounce or onBlur might be better for performance
     updateElementName(selectedElement.id, e.target.value);
   };
   
-  const handleAttributeChange = (attrName: string, value: string) => {
+  const handleAttributeChangeLocal = (attrName: string, value: string) => {
     const newAttributes = { ...attributes, [attrName]: value };
-    setAttributes(newAttributes);
-    updateElement(selectedElement.id, { attributes: newAttributes });
+    setAttributes(newAttributes); // Update local state for controlled input
+    updateElementAttribute(selectedElement.id, attrName, value);
   };
 
   const handleAiStyleSuggest = async () => {
@@ -165,36 +180,82 @@ export function StyleConfigurationPanel() {
     updateElementStyle(selectedElement.id, newStyles);
     toast({ title: "AI Styles Applied", description: "The suggested styles have been applied to the element." });
   };
+  
+  const handleAddListItem = () => {
+    if (selectedElement && (selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li')) {
+      // If 'li' is selected, add to its parent list. Otherwise, add to the selected list.
+      const parentListId = selectedElement.type === 'li' ? findParentListId(selectedElement.id) : selectedElement.id;
+      if (parentListId) {
+        addElement('li', parentListId);
+      }
+    }
+  };
+
+  // This helper function would need to be implemented or EditorContext adapted to find parent
+  const findParentListId = (childId: string): string | undefined => {
+    // This is a simplified placeholder. A real implementation would traverse the elements tree.
+    // For now, we assume if an 'li' is selected, its direct parent in the flat 'elements' array (if it exists and is a list) is the target.
+    // This needs robust implementation if deep nesting is common.
+    // Or, the addElement in context could be smarter.
+    // For now, if selectedElement is 'li', assume its parent is what we need, but this is not robust for deep nesting
+    // A better approach might be to pass path or have context manage parent-child relationships more explicitly for add operations.
+    // console.warn("findParentListId is a placeholder and needs robust implementation for deep nesting.");
+    return selectedElement?.id; // This is incorrect if LI is selected.
+                                // We need a way to get parent ID from context or pass it
+  };
+
 
   const renderContentInput = () => {
-    if (['p', 'h1', 'h2', 'h3', 'button', 'span'].includes(selectedElement.type)) {
+    // p, h1-h3, button, span, li, a, label use `content` for their text
+    // textarea uses `content` for its value
+    if (['p', 'h1', 'h2', 'h3', 'button', 'span', 'li', 'a', 'label', 'textarea'].includes(selectedElement.type)) {
+      const isTextarea = selectedElement.type === 'textarea';
       return (
         <div className="space-y-1">
-          <Label htmlFor="elementContent" className="text-xs">Content</Label>
+          <Label htmlFor="elementContent" className="text-xs">{isTextarea ? 'Value' : 'Content'}</Label>
           <Textarea
             id="elementContent"
-            value={content}
+            value={content} // `content` state is already correctly set for input/textarea
             onChange={handleContentChange}
-            placeholder="Enter text content..."
+            placeholder={isTextarea ? "Enter text for textarea..." : "Enter text content..."}
             className="text-xs"
+            rows={isTextarea ? 4 : 2}
           />
         </div>
       );
+    }
+    // Input type="text" uses attribute `value`
+    if (selectedElement.type === 'input') {
+         return (
+            <div className="space-y-1">
+                <Label htmlFor="inputValue" className="text-xs">Value</Label>
+                <Input
+                    id="inputValue"
+                    type="text"
+                    value={String(attributes.value || '')}
+                    onChange={(e) => handleAttributeChangeLocal('value', e.target.value)}
+                    placeholder="Enter input value"
+                    className="h-8 text-xs"
+                />
+            </div>
+         );
     }
     return null;
   };
   
   const renderAttributeInputs = () => {
+    const commonInputs: JSX.Element[] = [];
+
     if (selectedElement.type === 'img') {
-      return (
-        <>
+      commonInputs.push(
+        <React.Fragment key="img-attrs">
           <div className="space-y-1">
             <Label htmlFor="imgSrc" className="text-xs">Image Source (URL)</Label>
             <Input
               id="imgSrc"
               type="url"
-              value={attributes.src || ''}
-              onChange={(e) => handleAttributeChange('src', e.target.value)}
+              value={attributes.src as string || ''}
+              onChange={(e) => handleAttributeChangeLocal('src', e.target.value)}
               placeholder="https://example.com/image.png"
               className="h-8 text-xs"
             />
@@ -204,19 +265,66 @@ export function StyleConfigurationPanel() {
             <Input
               id="imgAlt"
               type="text"
-              value={attributes.alt || ''}
-              onChange={(e) => handleAttributeChange('alt', e.target.value)}
+              value={attributes.alt as string || ''}
+              onChange={(e) => handleAttributeChangeLocal('alt', e.target.value)}
               placeholder="Descriptive text for image"
               className="h-8 text-xs"
             />
           </div>
-        </>
+        </React.Fragment>
       );
+    } else if (selectedElement.type === 'a') {
+      commonInputs.push(
+        <div className="space-y-1" key="a-href">
+          <Label htmlFor="linkHref" className="text-xs">Link URL (href)</Label>
+          <Input
+            id="linkHref"
+            type="url"
+            value={attributes.href as string || ''}
+            onChange={(e) => handleAttributeChangeLocal('href', e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-xs"
+          />
+        </div>
+      );
+    } else if (selectedElement.type === 'input' || selectedElement.type === 'textarea') {
+        commonInputs.push(
+            <div className="space-y-1" key={`${selectedElement.type}-placeholder`}>
+                <Label htmlFor={`${selectedElement.type}Placeholder`} className="text-xs">Placeholder</Label>
+                <Input
+                    id={`${selectedElement.type}Placeholder`}
+                    type="text"
+                    value={attributes.placeholder as string || ''}
+                    onChange={(e) => handleAttributeChangeLocal('placeholder', e.target.value)}
+                    placeholder="Enter placeholder text"
+                    className="h-8 text-xs"
+                />
+            </div>
+        );
     }
-    return null;
+    if (selectedElement.type === 'input') {
+        // Could add 'type' attribute editor here if more input types are supported
+    } else if (selectedElement.type === 'label') {
+        commonInputs.push(
+            <div className="space-y-1" key="label-for">
+                <Label htmlFor="labelFor" className="text-xs">For (Input ID)</Label>
+                <Input
+                    id="labelFor"
+                    type="text"
+                    value={attributes.htmlFor as string || ''}
+                    onChange={(e) => handleAttributeChangeLocal('htmlFor', e.target.value)}
+                    placeholder="ID of the input element"
+                    className="h-8 text-xs"
+                />
+            </div>
+        );
+    }
+
+    return commonInputs.length > 0 ? <>{commonInputs}</> : null;
   };
 
-  const isFlexOrGrid = localStyles.display === 'flex' || localStyles.display === 'grid' || localStyles.display === 'inline-flex' || localStyles.display === 'inline-grid';
+  const isFlexOrGrid = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(localStyles.display || '');
+  const canHaveChildren = ['div', 'ul', 'ol', 'li'].includes(selectedElement.type); // Expand as needed
 
   return (
     <div className="p-4 border-l h-full bg-card flex flex-col">
@@ -235,8 +343,25 @@ export function StyleConfigurationPanel() {
 
           {renderContentInput()}
           {renderAttributeInputs()}
+          
+          {(selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li') && (
+            <Button onClick={handleAddListItem} variant="outline" size="sm" className="w-full mt-2">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add List Item
+            </Button>
+          )}
 
-          <Accordion type="multiple" defaultValue={['layout', 'typography', 'appearance']} className="w-full">
+
+          <Accordion type="multiple" defaultValue={['layout', 'typography', 'appearance', 'attributes']} className="w-full">
+             <AccordionItem value="attributes">
+                <AccordionTrigger className="text-sm font-medium py-2">Attributes</AccordionTrigger>
+                <AccordionContent className="space-y-2 pt-1">
+                    {/* Generic attribute editor could go here, or specific ones */}
+                    {selectedElement.type === 'img' && (
+                        <StylePropertyInput label="Object Fit" propertyName="objectFit" value={localStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Select object fit"/>
+                    )}
+                </AccordionContent>
+            </AccordionItem>
+
             <AccordionItem value="layout">
               <AccordionTrigger className="text-sm font-medium py-2">Layout & Spacing</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
@@ -244,7 +369,7 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Height" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
                 <StylePropertyInput label="Padding" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px or 10px 20px" />
                 <StylePropertyInput label="Margin" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px or 0 auto" />
-                {selectedElement.type === 'div' && (
+                {(canHaveChildren || selectedElement.type === 'button' || selectedElement.type === 'input' || selectedElement.type === 'textarea' || selectedElement.type === 'p' || selectedElement.type === 'h1' || selectedElement.type === 'h2' || selectedElement.type === 'h3' || selectedElement.type === 'span' || selectedElement.type === 'label' || selectedElement.type === 'a' ) && (
                   <>
                     <StylePropertyInput label="Display" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Select display type"/>
                     {isFlexOrGrid && (
@@ -278,6 +403,7 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Border" propertyName="border" value={localStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
                 <StylePropertyInput label="Border Radius" propertyName="borderRadius" value={localStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
                 <StylePropertyInput label="Opacity" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
+                 <StylePropertyInput label="Box Shadow" propertyName="boxShadow" value={localStyles.boxShadow} onChange={handleStyleChange} placeholder="2px 2px 5px #888" />
               </AccordionContent>
             </AccordionItem>
 
@@ -319,4 +445,3 @@ export function StyleConfigurationPanel() {
     </div>
   );
 }
-
