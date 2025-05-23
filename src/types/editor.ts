@@ -19,7 +19,8 @@ export type EditorElementType =
   | 'textarea' // Form textarea
   | 'label' // Form label
   | 'icon'; // Icon element
-  // 'card' is not a direct HTML element type, but a DraggableItem type that creates a structure.
+  // 'card' e 'section-columns' não são tipos de elementos HTML diretos,
+  // mas tipos de DraggableItem que criam estruturas específicas.
 
 export interface EditorElement {
   id: string;
@@ -43,7 +44,9 @@ export interface EditorElement {
   children: EditorElement[]; // For nesting
 }
 
-export type DraggableItemType = EditorElementType | 'card'; // 'card' is a special draggable type
+// DraggableItemType define os tipos que aparecem no painel de arrastar.
+// Inclui tipos de elementos HTML diretos e tipos estruturais como 'card' e 'section-columns'.
+export type DraggableItemType = EditorElementType | 'card' | 'section-columns';
 
 export interface DraggableItem {
   type: DraggableItemType;

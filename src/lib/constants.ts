@@ -73,7 +73,7 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     },
     defaultStyles: {
       color: 'currentColor',
-      display: 'inline-block',
+      display: 'inline-block', // Para que possa ser alinhado com texto, se necessário
     },
   },
   {
@@ -85,12 +85,18 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   {
     type: 'ul',
     label: 'Lista (Não Ordenada)',
-    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
+    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px', listStyleType: 'disc' },
   },
   {
     type: 'ol',
     label: 'Lista (Ordenada)',
-    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
+    defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px', listStyleType: 'decimal' },
+  },
+  {
+    type: 'li', // Adicionado para referência interna, mas não como item arrastável direto
+    label: 'Item de Lista',
+    defaultContent: 'Item da lista',
+    defaultStyles: { marginBottom: '0.25rem' },
   },
   {
     type: 'a',
@@ -119,7 +125,7 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   {
     type: 'textarea',
     label: 'Área de Texto',
-    defaultContent: '',
+    defaultContent: '', // Textarea usa value que é tratado como content no editor
     defaultAttributes: { placeholder: 'Digite mais texto...' },
     defaultStyles: {
       padding: '0.5rem',
@@ -135,10 +141,14 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     label: 'Rótulo (Label)',
     defaultContent: 'Texto do Rótulo',
     defaultAttributes: { htmlFor: '' },
-    defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: '500' }, // fontWeight changed to medium
+    defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: '500' },
   },
   {
-    type: 'card',
+    type: 'card', // Este é um DraggableItem especial que cria uma estrutura
     label: 'Cartão (Card)',
+  },
+  {
+    type: 'section-columns', // Novo DraggableItem para layout em colunas
+    label: 'Seção de Colunas',
   },
 ];

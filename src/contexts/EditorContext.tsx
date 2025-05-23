@@ -3,7 +3,7 @@
 
 import type { CSSProperties } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { EditorElement, DraggableItem, DraggableItemType, ViewportMode } from '@/types/editor';
+import type { EditorElement, DraggableItemType, ViewportMode } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
 
 interface EditorContextType {
@@ -102,7 +102,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: cardContainerId,
         type: 'div',
         name: 'Card Container',
-        styles: { // These are desktop styles by default for now
+        styles: { 
           padding: '1rem',
           border: '1px solid hsl(var(--border))',
           borderRadius: 'var(--radius)',
@@ -121,7 +121,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         { 
           type: 'img', 
           name: 'Card Image',
-          attributes: { src: 'https://placehold.co/300x200.png', alt: 'Card image' },
+          attributes: { src: 'https://placehold.co/300x200.png', alt: 'Card image', 'data-ai-hint': 'placeholder modern' },
           styles: { width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 'calc(var(--radius) - 4px)' }
         },
         { 
@@ -140,7 +140,17 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           type: 'button', 
           name: 'Card Button',
           content: 'Saiba Mais',
-          styles: { alignSelf: 'flex-start' }
+          styles: { 
+            alignSelf: 'flex-start',
+            // Copiando estilos de botão padrão para consistência inicial
+            padding: '0.75rem 1.5rem',
+            fontSize: '1rem',
+            backgroundColor: 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
+            border: 'none',
+            borderRadius: 'var(--radius)',
+            cursor: 'pointer',
+          }
         },
       ];
       
@@ -148,8 +158,6 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type);
         if (!elDetails) {
           console.error(`Detalhes do elemento não encontrados para o tipo: ${childTemplate.type}`);
-          // Retornar um elemento placeholder ou lançar um erro mais específico
-          // Por agora, vamos pular este elemento filho problemático
           return null; 
         }
         return {
@@ -158,10 +166,10 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             name: childTemplate.name || `${elDetails.label} (Card)`,
             content: childTemplate.content || elDetails.defaultContent,
             attributes: {...(elDetails.defaultAttributes || {}), ...(childTemplate.attributes || {})},
-            styles: {...(elDetails.defaultStyles || {}), ...(childTemplate.styles || {})}, // Apply desktop styles by default
+            styles: {...(elDetails.defaultStyles || {}), ...(childTemplate.styles || {})}, 
             children: []
         };
-      }).filter(Boolean) as EditorElement[]; // Filter out nulls and assert type
+      }).filter(Boolean) as EditorElement[]; 
       
       if (parentId) {
         setElements(prevElements => addElementToParent(prevElements, parentId, cardContainer));
@@ -169,6 +177,61 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setElements(prevElements => [...prevElements, cardContainer]);
       }
       selectElement(cardContainerId);
+      return;
+    } else if (itemType === 'section-columns') {
+      const rowId = crypto.randomUUID();
+      const column1Id = crypto.randomUUID();
+      const column2Id = crypto.randomUUID();
+
+      const columnElementDefaultStyles: CSSProperties = {
+        flex: '1', // Cada coluna ocupa espaço igual
+        minHeight: '100px', // Para facilitar o drop
+        padding: '1rem', // Espaçamento interno da coluna
+        border: '1px dashed hsl(var(--muted))', // Visualização no editor
+        display: 'flex', // Para alinhar itens dentro da coluna (opcional)
+        flexDirection: 'column', // Itens dentro da coluna empilham verticalmente
+        gap: '0.5rem', // Espaço entre elementos dentro da coluna
+      };
+
+      const newRowElement: EditorElement = {
+        id: rowId,
+        type: 'div', // A linha é um div
+        name: 'Linha de Colunas',
+        styles: {
+          display: 'flex', // Ativa o layout flexbox para as colunas
+          width: '100%', // A linha ocupa toda a largura disponível
+          gap: '1rem', // Espaço entre as colunas
+          padding: '0.5rem', // Espaçamento interno da linha
+          border: '1px dashed hsl(var(--border))', // Visualização no editor
+          minHeight: '120px', // Para facilitar a seleção da linha
+        },
+        attributes: {},
+        children: [
+          {
+            id: column1Id,
+            type: 'div',
+            name: 'Coluna 1',
+            styles: { ...columnElementDefaultStyles },
+            attributes: {},
+            children: [],
+          },
+          {
+            id: column2Id,
+            type: 'div',
+            name: 'Coluna 2',
+            styles: { ...columnElementDefaultStyles },
+            attributes: {},
+            children: [],
+          },
+        ],
+      };
+
+      if (parentId) {
+        setElements(prevElements => addElementToParent(prevElements, parentId, newRowElement));
+      } else {
+        setElements(prevElements => [...prevElements, newRowElement]);
+      }
+      selectElement(rowId); // Seleciona a linha principal recém-criada
       return;
     }
 
@@ -182,11 +245,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`,
       content: itemTemplate.defaultContent,
       attributes: itemTemplate.defaultAttributes ? { ...itemTemplate.defaultAttributes } : {},
-      styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {}, // Apply desktop styles
+      styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {},
       children: [],
     };
 
-    if ((itemTemplate.type === 'ul' || itemTemplate.type === 'ol') && newElement.type !== 'card') {
+    if ((itemTemplate.type === 'ul' || itemTemplate.type === 'ol') && newElement.type !== 'card' && newElement.type !== 'section-columns') {
       const listItemTemplate = AVAILABLE_ELEMENTS.find(el => el.type === 'li');
       const listItem: EditorElement = {
         id: crypto.randomUUID(),
@@ -194,7 +257,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         name: 'Item da Lista',
         content: listItemTemplate?.defaultContent || 'Item da lista',
         attributes: listItemTemplate?.defaultAttributes || {},
-        styles: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' }, // Apply desktop styles
+        styles: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' },
         children: [],
       };
       newElement.children.push(listItem);
@@ -203,16 +266,29 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (parentId) {
       const parentElement = findElementRecursive(elements, parentId);
-      if (parentElement && (parentElement.type === 'div' || parentElement.type === 'ul' || parentElement.type === 'ol' || (parentElement.type === 'li' && newElement.type !== 'li'))) {
+      // Permite adicionar a qualquer 'div', 'ul', 'ol'. 'li' só aceita 'li' se for o pai direto (listas aninhadas).
+      const canAcceptChild = parentElement && 
+                             (parentElement.type === 'div' || 
+                              parentElement.type === 'ul' || 
+                              parentElement.type === 'ol' ||
+                              (parentElement.type === 'li' && newElement.type !== 'li')); // Um 'li' não pode ser pai direto de outro 'li' na mesma lista, mas pode ser pai de um 'div' ou 'p' etc.
+
+
+      if (canAcceptChild) {
          setElements(prevElements => addElementToParent(prevElements, parentId, newElement));
       } else if (parentElement && parentElement.type === 'li' && newElement.type === 'li') {
-         // This case might need review: adding li directly to root if parent is li but somehow targetting root.
-         // For now, let's assume addElementToParent handles finding the correct list parent or it goes to root.
-         setElements(prevElements => addElementToParent(prevElements, parentId, newElement)); // Try to add to parent list
+         // Lógica para encontrar o UL/OL pai do LI pai, e adicionar o novo LI a esse UL/OL
+         // Esta é uma simplificação, idealmente encontraríamos o UL/OL pai do LI.
+         // Por agora, se não puder adicionar ao LI, adiciona ao root ou ao primeiro container válido.
+         console.warn("Tentando adicionar LI a outro LI. Buscando UL/OL pai ou adicionando ao root.");
+         // Tenta adicionar ao root como fallback
+         setElements(prevElements => [...prevElements, newElement]);
       } else {
+        // Fallback para adicionar ao root se o pai não for um container válido para este filho
         setElements(prevElements => [...prevElements, newElement]);
       }
     } else {
+      // Adiciona ao root se não houver parentId
       setElements(prevElements => [...prevElements, newElement]);
     }
     selectElement(newElement.id);
@@ -225,7 +301,6 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!prevSelected) return null;
         const updatedSelected = { ...prevSelected, ...updates };
         if (updates.styles) {
-          // TODO: Update for responsive styles
           updatedSelected.styles = { ...prevSelected.styles, ...updates.styles };
         }
         if (updates.attributes) {
@@ -237,8 +312,6 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [selectedElement?.id]); 
   
   const updateElementStyle = useCallback((elementId: string, newStyles: CSSProperties) => {
-    // TODO: This needs to be aware of the current viewportMode to update the correct style object
-    // For now, it updates the general 'styles' object.
     updateElement(elementId, { styles: newStyles });
   }, [updateElement]);
 
