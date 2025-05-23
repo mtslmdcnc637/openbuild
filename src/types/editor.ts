@@ -73,3 +73,24 @@ export interface PageSettings {
   tiktokPixelId: string;
   googleTagManagerId: string;
 }
+
+export interface EditorContextType {
+  elements: EditorElement[];
+  selectedElement: EditorElement | null;
+  viewportMode: ViewportMode;
+  pageSettings: PageSettings;
+  isCanvasFullScreen: boolean;
+  addElement: (itemType: DraggableItemType, parentId?: string) => void;
+  updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
+  updateElementStyle: (elementId: string, newStylesForCurrentBreakpoint: CSSProperties) => void;
+  updateElementContent: (elementId: string, content: string) => void;
+  updateElementAttribute: (elementId: string, attributeName: string, value: string) => void;
+  updateElementName: (elementId: string, name: string) => void;
+  selectElement: (elementId: string | null) => void;
+  deleteElement: (elementId: string) => void;
+  moveElement: (draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => void;
+  setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>;
+  setViewportMode: (mode: ViewportMode) => void;
+  updatePageSetting: <K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => void;
+  toggleCanvasFullScreen: () => void;
+}

@@ -3,27 +3,8 @@
 
 import type { CSSProperties } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { EditorElement, DraggableItemType, ViewportMode, ResponsiveStyles, PageSettings } from '@/types/editor';
+import type { EditorElement, DraggableItemType, ViewportMode, ResponsiveStyles, PageSettings, EditorContextType } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
-
-interface EditorContextType {
-  elements: EditorElement[];
-  selectedElement: EditorElement | null;
-  viewportMode: ViewportMode;
-  pageSettings: PageSettings;
-  addElement: (itemType: DraggableItemType, parentId?: string) => void;
-  updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
-  updateElementStyle: (elementId: string, newStylesForCurrentBreakpoint: CSSProperties) => void;
-  updateElementContent: (elementId: string, content: string) => void;
-  updateElementAttribute: (elementId: string, attributeName: string, value: string) => void;
-  updateElementName: (elementId: string, name: string) => void;
-  selectElement: (elementId: string | null) => void;
-  deleteElement: (elementId: string) => void;
-  moveElement: (draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => void;
-  setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>;
-  setViewportMode: (mode: ViewportMode) => void;
-  updatePageSetting: <K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => void;
-}
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
@@ -41,6 +22,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
   const [viewportMode, setViewportModeInternal] = useState<ViewportMode>('desktop');
   const [pageSettings, setPageSettings] = useState<PageSettings>(initialPageSettings);
+  const [isCanvasFullScreen, setIsCanvasFullScreen] = useState<boolean>(false);
 
   const setViewportMode = (mode: ViewportMode) => {
     setViewportModeInternal(mode);
@@ -51,6 +33,10 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...prevSettings,
       [settingName]: value,
     }));
+  }, []);
+
+  const toggleCanvasFullScreen = useCallback(() => {
+    setIsCanvasFullScreen(prev => !prev);
   }, []);
 
 
@@ -74,7 +60,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (el.id === elementId) {
         const newEl = { ...el, ...updates };
         if (updates.styles) {
-          newEl.styles = { ...el.styles, ...updates.styles };
+          newEl.styles = { ...el.styles, ...updates.styles } as ResponsiveStyles;
         }
         if (updates.attributes) {
           newEl.attributes = { ...el.attributes, ...updates.attributes };
@@ -188,7 +174,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type);
         if (!elDetails) {
           console.error(`Detalhes do elemento não encontrados para o tipo: ${childTemplate.type}`);
-          return null;
+          return null; // Should not happen if constants are correct
         }
         return {
             id: crypto.randomUUID(),
@@ -293,7 +279,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!prevSelected) return null;
         const updatedSelected = { ...prevSelected, ...updates };
         if (updates.styles) {
-          updatedSelected.styles = { ...prevSelected.styles, ...updates.styles };
+          updatedSelected.styles = { ...prevSelected.styles, ...updates.styles } as ResponsiveStyles;
         }
         if (updates.attributes) {
           updatedSelected.attributes = { ...prevSelected.attributes, ...updates.attributes };
@@ -304,55 +290,19 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [selectedElement?.id]);
 
   const updateElementStyle = useCallback((elementId: string, newStylesForCurrentBreakpoint: CSSProperties) => {
-    setElements(prevElements =>
-      prevElements.map(el => {
-        if (el.id === elementId) {
-          const updatedStyles = { ...el.styles };
-          updatedStyles[viewportMode] = {
-            ...(updatedStyles[viewportMode] || {}),
-            ...newStylesForCurrentBreakpoint
-          };
-          return { ...el, styles: updatedStyles };
-        }
-        // Simplified recursive update for children:
-        // If you need deep updates for children's styles based on parent's viewport changes,
-        // this part might need to be more sophisticated or rely on updateElement.
-        if (el.children && el.children.length > 0) {
-           el.children = updateElementRecursive(el.children, elementId, { 
-             styles: {
-               ...el.children.find(c => c.id === elementId)?.styles,
-               [viewportMode]: newStylesForCurrentBreakpoint
-             } as ResponsiveStyles // This is a simplification and might need adjustment
-           });
-        }
-        return el;
-      })
-    );
+      const elementToUpdate = findElementRecursive(elements, elementId);
+      if (!elementToUpdate) return;
 
-    if (selectedElement?.id === elementId) {
-        setSelectedElement(prevSelected => {
-            if (!prevSelected) return null;
-            const updatedStyles = { ...prevSelected.styles };
-            updatedStyles[viewportMode] = {
-                ...(updatedStyles[viewportMode] || {}),
-                ...newStylesForCurrentBreakpoint
-            };
-            return { ...prevSelected, styles: updatedStyles };
-        });
-    }
-    // This ensures the main element object is also updated if it was found directly or in children
-    const elToUpdate = findElementRecursive(elements, elementId);
-    if(elToUpdate) {
-        const finalStyles = {...elToUpdate.styles};
-        finalStyles[viewportMode] = {
-            ...(finalStyles[viewportMode] || {}),
-            ...newStylesForCurrentBreakpoint
-        };
-        // We call updateElement to ensure the main 'elements' array reflects the change,
-        // especially if the element was nested.
-        updateElement(elementId, { styles: finalStyles });
-    }
-  }, [viewportMode, updateElement, elements, selectedElement?.id]);
+      const updatedStyles: ResponsiveStyles = {
+        ...elementToUpdate.styles,
+        [viewportMode]: {
+          ...(elementToUpdate.styles[viewportMode] || {}),
+          ...newStylesForCurrentBreakpoint,
+        },
+      };
+      updateElement(elementId, { styles: updatedStyles });
+
+  }, [viewportMode, updateElement, elements]);
 
 
   const updateElementContent = useCallback((elementId: string, content: string) => {
@@ -406,6 +356,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         selectedElement,
         viewportMode,
         pageSettings,
+        isCanvasFullScreen,
         addElement,
         updateElement,
         updateElementStyle,
@@ -418,6 +369,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setElements,
         setViewportMode,
         updatePageSetting,
+        toggleCanvasFullScreen,
       }}
     >
       {children}
