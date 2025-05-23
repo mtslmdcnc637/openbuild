@@ -15,11 +15,12 @@ import type { ViewportMode } from '@/types/editor';
 import { cn } from '@/lib/utils';
 
 export function EditorLayout() {
-  const { elements, viewportMode, setViewportMode } = useEditor();
+  const { elements, viewportMode, setViewportMode, pageSettings } = useEditor();
 
   const handleExportHtml = () => {
-    const htmlContent = generateHtmlDocument(elements, "Minha Página Incrível");
-    downloadHtmlFile(htmlContent);
+    // Pass current elements and pageSettings to the generator
+    const htmlContent = generateHtmlDocument(elements, pageSettings);
+    downloadHtmlFile(htmlContent, `${pageSettings.pageTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'pagina'}.html`);
   };
 
   const viewportButtons: { mode: ViewportMode; icon: React.ElementType; label: string }[] = [
@@ -42,7 +43,7 @@ export function EditorLayout() {
               aria-label={`Visualizar em ${label}`}
               title={`Visualizar em ${label}`}
               className={cn(
-                "h-8 w-8", // Smaller icon buttons
+                "h-8 w-8",
                 viewportMode === mode ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -59,7 +60,7 @@ export function EditorLayout() {
         <aside className="w-64 flex-shrink-0 overflow-y-auto">
           <DraggableElementsPanel />
         </aside>
-        <main className="flex-1 overflow-y-auto bg-muted/40"> {/* Changed background for contrast */}
+        <main className="flex-1 overflow-y-auto bg-muted/40">
           <CanvasArea />
         </main>
         <aside className="w-80 flex-shrink-0 overflow-y-auto">

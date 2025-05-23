@@ -30,7 +30,7 @@ export interface EditorElement {
   id: string;
   type: EditorElementType;
   name: string;
-  content?: string; 
+  content?: string;
   attributes?: {
     src?: string;
     alt?: string;
@@ -38,13 +38,13 @@ export interface EditorElement {
     htmlFor?: string;
     type?: string;
     placeholder?: string;
-    value?: string; 
+    value?: string;
     iconName?: string;
     size?: string | number;
     strokeWidth?: string | number;
     [key: string]: string | number | boolean | undefined;
   };
-  styles: ResponsiveStyles; // Alterado para suportar estilos responsivos
+  styles: ResponsiveStyles;
   children: EditorElement[];
 }
 
@@ -53,7 +53,7 @@ export type DraggableItemType = EditorElementType | 'card' | 'section-columns';
 export interface DraggableItem {
   type: DraggableItemType;
   label: string;
-  defaultStyles?: CSSProperties; // Estilos padrão serão aplicados ao breakpoint 'desktop'
+  defaultStyles?: CSSProperties;
   defaultContent?: string;
   defaultAttributes?: EditorElement['attributes'];
 }
@@ -65,3 +65,11 @@ export interface Point {
 
 export type ViewportMode = 'desktop' | 'tablet' | 'mobile';
 
+export interface PageSettings {
+  pageTitle: string;
+  bodyBackgroundColor: string;
+  bodyBackgroundImageUrl: string;
+  facebookPixelId: string;
+  tiktokPixelId: string;
+  googleTagManagerId: string;
+}

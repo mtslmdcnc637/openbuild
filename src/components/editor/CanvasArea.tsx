@@ -9,18 +9,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export function CanvasArea() {
-  const { elements, addElement, selectElement, viewportMode, moveElement } = useEditor();
+  const { elements, addElement, selectElement, viewportMode, moveElement, pageSettings } = useEditor();
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const itemDataString = e.dataTransfer.getData('application/json');
     if (!itemDataString) return;
-    
-    const item = JSON.parse(itemDataString) as DraggableItem | { id: string }; 
+
+    const item = JSON.parse(itemDataString) as DraggableItem | { id: string };
 
     if ('id' in item && item.id) {
-      // moveElement(item.id, null); 
-    } 
+      // moveElement(item.id, null);
+    }
     else if ('type' in item && item.type) {
       addElement(item.type);
     }
@@ -28,60 +28,68 @@ export function CanvasArea() {
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
     e.currentTarget.classList.add('drag-over-active');
   };
-  
+
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.currentTarget.classList.remove('drag-over-active');
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Check if the click target is the canvas-content div itself or the scroll area's direct child
     if (e.target === e.currentTarget || (e.target as HTMLElement).id === 'canvas-content-wrapper') {
       selectElement(null);
     }
   };
 
+  const canvasContentStyles: React.CSSProperties = {
+    backgroundColor: pageSettings.bodyBackgroundColor || undefined, // Use undefined if empty to allow CSS fallback
+    backgroundImage: pageSettings.bodyBackgroundImageUrl ? `url(${pageSettings.bodyBackgroundImageUrl})` : undefined,
+    backgroundSize: 'cover', // Sensible default
+    backgroundPosition: 'center', // Sensible default
+    backgroundRepeat: 'no-repeat', // Sensible default
+  };
+
+
   const canvasWrapperClasses = cn(
-    "mx-auto transition-all duration-300 ease-in-out bg-background shadow-lg",
-    "border-2 border-dashed border-transparent", // For drop indicator
+    "mx-auto transition-all duration-300 ease-in-out shadow-lg", // Removed bg-background here, will be set by canvasContentStyles
+    "border-2 border-dashed border-transparent",
     "drag-over-active:border-accent drag-over-active:bg-accent/10",
     {
       'w-full min-h-full': viewportMode === 'desktop',
-      'max-w-2xl w-full border border-border': viewportMode === 'tablet', // 768px
-      'max-w-sm w-full border border-border': viewportMode === 'mobile', // 375px for iPhone SE/Mini like
+      'max-w-2xl w-full border border-border bg-card': viewportMode === 'tablet', // bg-card for tablet/mobile to contrast with editor bg
+      'max-w-sm w-full border border-border bg-card': viewportMode === 'mobile', // bg-card for tablet/mobile
     }
   );
-  
-  const canvasContentHeight = elements.length === 0 
-    ? (viewportMode === 'desktop' ? 'calc(100vh - 150px)' : '80vh') 
+
+  const canvasContentHeight = elements.length === 0
+    ? (viewportMode === 'desktop' ? 'calc(100vh - 150px)' : '80vh')
     : 'auto';
 
 
   return (
-    <ScrollArea 
+    <ScrollArea
       className="h-full flex-grow relative"
-      // onClick={handleCanvasClick} // Moved click to inner div to avoid issues with scrollbar clicks
     >
-      <div 
-        id="canvas-root-wrapper" // Outer wrapper for centering and padding
+      <div
+        id="canvas-root-wrapper"
         className={cn(
-          "p-4 md:p-8 min-h-full w-full flex", // Flex to center the actual canvas
-          viewportMode !== 'desktop' ? "items-start justify-center" : "" // Center only for tablet/mobile
+          "p-4 md:p-8 min-h-full w-full flex",
+          viewportMode !== 'desktop' ? "items-start justify-center" : ""
         )}
-        onClick={handleCanvasClick} 
+        onClick={handleCanvasClick}
       >
         <div
-          id="canvas-content-wrapper" // This is the actual "page" content area
+          id="canvas-content-wrapper"
           className={canvasWrapperClasses}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          style={{ 
+          style={{
+            ...canvasContentStyles, // Apply dynamic body styles here
             minHeight: canvasContentHeight,
-            height: elements.length > 0 ? 'auto' : undefined // Allow auto height if elements exist
+            height: elements.length > 0 ? 'auto' : undefined
           }}
         >
           {elements.length === 0 && (

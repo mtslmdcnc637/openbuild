@@ -14,8 +14,9 @@ import type { CSSProperties } from 'react';
 import { suggestElementStyle, type SuggestElementStyleInput } from '@/ai/flows/suggest-element-style';
 import { parseCssStringToStyleObject, getComputedStyles } from '@/lib/style-utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Wand2, PlusCircle } from 'lucide-react';
-// import * as LucideIcons from 'lucide-react'; // Not used directly here
+import { Trash2, Wand2, PlusCircle, Settings } from 'lucide-react';
+import type { PageSettings } from '@/types/editor';
+
 
 const commonFontFamilies = [
   { label: "Padrão do Sistema", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
@@ -87,28 +88,40 @@ const objectFitOptions = [
 ];
 
 export function StyleConfigurationPanel() {
-  const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement, viewportMode } = useEditor();
-  
-  // localStyles will hold the styles for the current viewportMode, or inherited if not set.
+  const {
+    selectedElement,
+    updateElementStyle,
+    updateElementContent,
+    updateElementAttribute,
+    updateElementName,
+    deleteElement,
+    addElement,
+    viewportMode,
+    pageSettings,
+    updatePageSetting,
+  } = useEditor();
+
   const [localStyles, setLocalStyles] = useState<CSSProperties>({});
   const [content, setContent] = useState<string>('');
   const [elementName, setElementName] = useState<string>('');
   const [attributes, setAttributes] = useState<Record<string, string | number | boolean | undefined>>({});
-  
+
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiSuggestedCss, setAiSuggestedCss] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
 
+  // Local state for page settings inputs to avoid direct binding if desired,
+  // though direct binding to context is also fine for simple cases.
+  const [localPageSettings, setLocalPageSettings] = useState<PageSettings>(pageSettings);
+
+  useEffect(() => {
+    setLocalPageSettings(pageSettings);
+  }, [pageSettings]);
+
+
   useEffect(() => {
     if (selectedElement) {
-      // Get styles for the current breakpoint, falling back to desktop, then empty.
-      // This ensures the panel shows *some* value, prioritizing specificity.
-      const currentBreakpointStyles = selectedElement.styles[viewportMode] || {};
-      const desktopStyles = selectedElement.styles.desktop || {};
-      // For display, we want to show the most specific value. If a tablet style is set, show that. If not, show desktop.
-      // getComputedStyles gives the final applied style, which is good for display.
       setLocalStyles(getComputedStyles(selectedElement.styles, viewportMode));
-
       if (selectedElement.type === 'input') {
         setContent(String(selectedElement.attributes?.value || ''));
       } else {
@@ -122,47 +135,44 @@ export function StyleConfigurationPanel() {
       setElementName('');
       setAttributes({});
     }
-  }, [selectedElement, viewportMode]); // Re-run when viewportMode changes
-
-  if (!selectedElement) {
-    return (
-      <div className="p-4 border-l h-full bg-card text-muted-foreground flex items-center justify-center">
-        <p className="text-sm">Selecione um elemento para configurar.</p>
-      </div>
-    );
-  }
+  }, [selectedElement, viewportMode]);
 
   const handleStyleChange = (property: keyof CSSProperties, value: string) => {
     if (!selectedElement) return;
-    // Create new styles object for the current breakpoint based on current localStyles
-    const newBreakpointStyles = { 
-      ...(selectedElement.styles[viewportMode] || selectedElement.styles.desktop || {}), // Start with existing or desktop styles for the breakpoint
-      [property]: value 
+    const newBreakpointStyles = {
+      ...(selectedElement.styles[viewportMode] || selectedElement.styles.desktop || {}),
+      [property]: value
     };
-    // If value is empty, we might want to "unset" it for this breakpoint, so it inherits again.
-    // For simplicity now, an empty value will just be an empty string.
-    // A more advanced version could remove the key if value is empty.
-    setLocalStyles(prev => ({...prev, [property]: value})); // Update local display immediately
-    updateElementStyle(selectedElement.id, { [property]: value }); // Send only the changed property for the current breakpoint
+    setLocalStyles(prev => ({...prev, [property]: value}));
+    updateElementStyle(selectedElement.id, { [property]: value });
   };
-  
+
 
   const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
     updateElementContent(selectedElement.id, newContent);
   };
-  
+
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
     setElementName(e.target.value);
     updateElementName(selectedElement.id, e.target.value);
   };
-  
+
   const handleAttributeChangeLocal = (attrName: string, value: string | number) => {
     const newAttributes = { ...attributes, [attrName]: String(value) };
     setAttributes(newAttributes);
     updateElementAttribute(selectedElement.id, attrName, String(value));
   };
+
+  const handlePageSettingChange = <K extends keyof PageSettings>(
+    settingName: K,
+    value: PageSettings[K]
+  ) => {
+    setLocalPageSettings(prev => ({ ...prev, [settingName]: value }));
+    updatePageSetting(settingName, value);
+  };
+
 
   const handleAiStyleSuggest = async () => {
     if (!aiPrompt.trim()) {
@@ -191,20 +201,18 @@ export function StyleConfigurationPanel() {
   const applyAiSuggestedStyle = () => {
     if (!aiSuggestedCss || !selectedElement) return;
     const suggestedStylesObject = parseCssStringToStyleObject(aiSuggestedCss);
-    
-    // Apply AI suggested styles to the current viewport's styles
+
     const currentStylesForBreakpoint = selectedElement.styles[viewportMode] || {};
     const newStylesForBreakpoint = { ...currentStylesForBreakpoint, ...suggestedStylesObject };
-    
-    updateElementStyle(selectedElement.id, newStylesForBreakpoint); // This updates the specific breakpoint
-    setLocalStyles(prev => ({...prev, ...suggestedStylesObject})); // Update local display
+
+    updateElementStyle(selectedElement.id, newStylesForBreakpoint);
+    setLocalStyles(prev => ({...prev, ...suggestedStylesObject}));
 
     toast({ title: "Estilos da IA Aplicados", description: `Os estilos sugeridos foram aplicados à visualização ${viewportMode}.` });
   };
-  
+
   const handleAddListItem = () => {
     if (selectedElement && (selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li')) {
-      // This logic might need to be more robust to find the correct parent list (ul/ol)
       const parentListId = selectedElement.type === 'li' ? findParentListId(selectedElement.id) : selectedElement.id;
       if (parentListId) {
         addElement('li', parentListId);
@@ -212,21 +220,113 @@ export function StyleConfigurationPanel() {
     }
   };
 
-  // Placeholder - needs a robust implementation that traverses the element tree in EditorContext
   const findParentListId = (childId: string): string | undefined => {
-    // This is a simplified placeholder. A real implementation would search `elements` in context.
-    // For now, assume the selectedElement's parent if it's a list item, or itself if it's a list.
-    // This needs to be improved if deep nesting is common.
     console.warn("findParentListId is a placeholder and may not work for nested lists.");
-    return selectedElement?.id; 
+    return selectedElement?.id;
   };
+
+
+  if (!selectedElement) {
+    // Render Page Settings Panel
+    return (
+      <div className="p-4 border-l h-full bg-card flex flex-col">
+        <div className="flex items-center mb-4">
+          <Settings className="h-5 w-5 mr-2 text-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Configurações da Página</h2>
+        </div>
+        <ScrollArea className="flex-grow pr-2">
+          <Accordion type="multiple" defaultValue={['geral', 'bodyStyle', 'trackingScripts']} className="w-full">
+            <AccordionItem value="geral">
+              <AccordionTrigger className="text-sm font-medium py-2">Geral</AccordionTrigger>
+              <AccordionContent className="space-y-2 pt-1">
+                <div className="space-y-1">
+                  <Label htmlFor="pageTitle" className="text-xs">Título da Página</Label>
+                  <Input
+                    id="pageTitle"
+                    value={localPageSettings.pageTitle}
+                    onChange={(e) => handlePageSettingChange('pageTitle', e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="Título exibido no navegador"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="bodyStyle">
+              <AccordionTrigger className="text-sm font-medium py-2">Estilo do Corpo (Body)</AccordionTrigger>
+              <AccordionContent className="space-y-2 pt-1">
+                <div className="space-y-1">
+                  <Label htmlFor="bodyBgColor" className="text-xs">Cor de Fundo do Corpo</Label>
+                  <Input
+                    id="bodyBgColor"
+                    type="color"
+                    value={localPageSettings.bodyBackgroundColor}
+                    onChange={(e) => handlePageSettingChange('bodyBackgroundColor', e.target.value)}
+                    className="h-8 w-full p-0.5 border-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="bodyBgImageUrl" className="text-xs">URL da Imagem de Fundo do Corpo</Label>
+                  <Input
+                    id="bodyBgImageUrl"
+                    type="url"
+                    value={localPageSettings.bodyBackgroundImageUrl}
+                    onChange={(e) => handlePageSettingChange('bodyBackgroundImageUrl', e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="https://exemplo.com/fundo.jpg"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="trackingScripts">
+              <AccordionTrigger className="text-sm font-medium py-2">Scripts de Rastreamento</AccordionTrigger>
+              <AccordionContent className="space-y-2 pt-1">
+                <div className="space-y-1">
+                  <Label htmlFor="fbPixelId" className="text-xs">ID do Pixel do Facebook</Label>
+                  <Input
+                    id="fbPixelId"
+                    value={localPageSettings.facebookPixelId}
+                    onChange={(e) => handlePageSettingChange('facebookPixelId', e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="Seu ID do Pixel do FB"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="tiktokPixelId" className="text-xs">ID do Pixel do TikTok</Label>
+                  <Input
+                    id="tiktokPixelId"
+                    value={localPageSettings.tiktokPixelId}
+                    onChange={(e) => handlePageSettingChange('tiktokPixelId', e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="Seu ID do Pixel do TikTok"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="gtmId" className="text-xs">ID do Google Tag Manager</Label>
+                  <Input
+                    id="gtmId"
+                    value={localPageSettings.googleTagManagerId}
+                    onChange={(e) => handlePageSettingChange('googleTagManagerId', e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="GTM-XXXXXXX"
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </ScrollArea>
+      </div>
+    );
+  }
+
 
   const renderContentInput = () => {
     if (['p', 'h1', 'h2', 'h3', 'button', 'span', 'li', 'a', 'label', 'textarea'].includes(selectedElement.type)) {
       const isTextarea = selectedElement.type === 'textarea';
       return (
         <div className="space-y-1">
-          <Label htmlFor="elementContent" className="text-xs">{isTextarea ? 'Valor' : 'Conteúdo do Texto'}</Label>
+          <Label htmlFor="elementContent" className="text-xs">{isTextarea ? 'Valor Padrão' : 'Conteúdo do Texto'}</Label>
           <Textarea
             id="elementContent"
             value={content}
@@ -241,10 +341,10 @@ export function StyleConfigurationPanel() {
     if (selectedElement.type === 'input') {
          return (
             <div className="space-y-1">
-                <Label htmlFor="inputValue" className="text-xs">Valor</Label>
+                <Label htmlFor="inputValue" className="text-xs">Valor Padrão</Label>
                 <Input
                     id="inputValue"
-                    type="text"
+                    type="text" // This could be dynamic based on input type attribute
                     value={String(attributes.value || '')}
                     onChange={(e) => handleAttributeChangeLocal('value', e.target.value)}
                     placeholder="Digite o valor do campo"
@@ -255,7 +355,7 @@ export function StyleConfigurationPanel() {
     }
     return null;
   };
-  
+
   const renderAttributeInputs = () => {
     const commonInputs: JSX.Element[] = [];
 
@@ -356,7 +456,19 @@ export function StyleConfigurationPanel() {
         );
     }
     if (selectedElement.type === 'input') {
-        // Input type attribute editor could be added here
+        commonInputs.push(
+             <div className="space-y-1" key="input-type">
+                <Label htmlFor="inputType" className="text-xs">Tipo do Campo (type)</Label>
+                <Input
+                    id="inputType"
+                    type="text"
+                    value={attributes.type as string || 'text'}
+                    onChange={(e) => handleAttributeChangeLocal('type', e.target.value)}
+                    placeholder="text, email, password, number..."
+                    className="h-8 text-xs"
+                />
+            </div>
+        );
     } else if (selectedElement.type === 'label') {
         commonInputs.push(
             <div className="space-y-1" key="label-for">
@@ -375,9 +487,8 @@ export function StyleConfigurationPanel() {
 
     return commonInputs.length > 0 ? <>{commonInputs}</> : null;
   };
-  
-  // Use localStyles for display in StylePropertyInput, which reflects the computed/specific styles for the current viewport.
-  const displayStyles = localStyles; 
+
+  const displayStyles = localStyles;
   const isFlexOrGrid = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(displayStyles.display || '');
   const canHaveChildren = ['div', 'ul', 'ol', 'li'].includes(selectedElement.type);
 
@@ -397,7 +508,7 @@ export function StyleConfigurationPanel() {
           </div>
 
           {renderContentInput()}
-          
+
           {(selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li') && (
             <Button onClick={handleAddListItem} variant="outline" size="sm" className="w-full mt-2">
               <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Item à Lista
@@ -429,6 +540,10 @@ export function StyleConfigurationPanel() {
                       <>
                         <StylePropertyInput label="Alinhar Itens (Align Items)" propertyName="alignItems" value={displayStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Alinhar itens"/>
                         <StylePropertyInput label="Justificar Conteúdo (Justify Content)" propertyName="justifyContent" value={displayStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justificar conteúdo"/>
+                        {displayStyles.display?.includes('flex') && (
+                           <StylePropertyInput label="Direção Flex (Flex Direction)" propertyName="flexDirection" value={displayStyles.flexDirection} onChange={handleStyleChange} type="select" options={[{label: 'Linha (row)', value: 'row'}, {label: 'Coluna (column)', value: 'column'}]} placeholder="Direção"/>
+                        )}
+                        <StylePropertyInput label="Espaçamento (Gap)" propertyName="gap" value={displayStyles.gap} onChange={handleStyleChange} placeholder="10px" />
                       </>
                     )}
                   </>
@@ -447,7 +562,7 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Altura da Linha" propertyName="lineHeight" value={displayStyles.lineHeight} onChange={handleStyleChange} placeholder="1.5 / 20px" />
               </AccordionContent>
             </AccordionItem>
-            
+
             <AccordionItem value="appearance">
               <AccordionTrigger className="text-sm font-medium py-2">Aparência</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">

@@ -3,17 +3,18 @@
 
 import type { CSSProperties } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { EditorElement, DraggableItemType, ViewportMode, ResponsiveStyles } from '@/types/editor';
+import type { EditorElement, DraggableItemType, ViewportMode, ResponsiveStyles, PageSettings } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
 
 interface EditorContextType {
   elements: EditorElement[];
   selectedElement: EditorElement | null;
   viewportMode: ViewportMode;
+  pageSettings: PageSettings;
   addElement: (itemType: DraggableItemType, parentId?: string) => void;
   updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
   updateElementStyle: (elementId: string, newStylesForCurrentBreakpoint: CSSProperties) => void;
-  updateElementContent: (elementId: string, content: string) => void; 
+  updateElementContent: (elementId: string, content: string) => void;
   updateElementAttribute: (elementId: string, attributeName: string, value: string) => void;
   updateElementName: (elementId: string, name: string) => void;
   selectElement: (elementId: string | null) => void;
@@ -21,20 +22,37 @@ interface EditorContextType {
   moveElement: (draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => void;
   setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>;
   setViewportMode: (mode: ViewportMode) => void;
+  updatePageSetting: <K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
+
+const initialPageSettings: PageSettings = {
+  pageTitle: 'Minha Página Incrível',
+  bodyBackgroundColor: '#FFFFFF', // Default white
+  bodyBackgroundImageUrl: '',
+  facebookPixelId: '',
+  tiktokPixelId: '',
+  googleTagManagerId: '',
+};
 
 export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
   const [viewportMode, setViewportModeInternal] = useState<ViewportMode>('desktop');
+  const [pageSettings, setPageSettings] = useState<PageSettings>(initialPageSettings);
 
   const setViewportMode = (mode: ViewportMode) => {
     setViewportModeInternal(mode);
-    // When viewport changes, if an element is selected, we might want to re-evaluate its displayed styles.
-    // This is handled by StyleConfigurationPanel's useEffect.
   };
+
+  const updatePageSetting = useCallback(<K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => {
+    setPageSettings(prevSettings => ({
+      ...prevSettings,
+      [settingName]: value,
+    }));
+  }, []);
+
 
   const findElementRecursive = (elementsArray: EditorElement[], elementId: string): EditorElement | null => {
     for (const el of elementsArray) {
@@ -46,7 +64,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     return null;
   };
-  
+
   const updateElementRecursive = (
     elementsArray: EditorElement[],
     elementId: string,
@@ -55,8 +73,9 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return elementsArray.map(el => {
       if (el.id === elementId) {
         const newEl = { ...el, ...updates };
-        // If updates.styles is a full ResponsiveStyles object, it's replaced.
-        // If updates.styles comes from updateElementStyle, it's handled there to update a specific breakpoint.
+        if (updates.styles) {
+          newEl.styles = { ...el.styles, ...updates.styles };
+        }
         if (updates.attributes) {
           newEl.attributes = { ...el.attributes, ...updates.attributes };
         }
@@ -103,12 +122,14 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const baseId = crypto.randomUUID();
     let newElementToAdd: EditorElement | null = null;
 
+    const commonResponsiveStyles: ResponsiveStyles = { desktop: {} };
+
     if (itemType === 'card') {
       const cardContainer: EditorElement = {
         id: baseId,
         type: 'div',
         name: 'Contêiner do Card',
-        styles: { 
+        styles: {
           desktop: {
             padding: '1rem',
             border: '1px solid hsl(var(--border))',
@@ -126,29 +147,29 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
 
       const childTemplates: Array<Partial<EditorElement> & { type: EditorElement['type']}> = [
-        { 
-          type: 'img', 
+        {
+          type: 'img',
           name: 'Imagem do Card',
           attributes: { src: 'https://placehold.co/300x200.png', alt: 'Imagem do card', 'data-ai-hint': 'modern placeholder' },
           styles: { desktop: { width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 'calc(var(--radius) - 4px)' } }
         },
-        { 
-          type: 'h3', 
+        {
+          type: 'h3',
           name: 'Título do Card',
           content: 'Título do Card',
           styles: { desktop: { margin: '0', fontSize: '1.25rem', fontWeight: 'bold' } }
         },
-        { 
-          type: 'p', 
+        {
+          type: 'p',
           name: 'Texto do Card',
           content: 'Este é o texto do card. Descreva o item ou recurso aqui.',
           styles: { desktop: { margin: '0', fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))', lineHeight: '1.5' } }
         },
-        { 
-          type: 'button', 
+        {
+          type: 'button',
           name: 'Botão do Card',
           content: 'Saiba Mais',
-          styles: { 
+          styles: {
             desktop: {
               alignSelf: 'flex-start',
               padding: '0.75rem 1.5rem',
@@ -162,23 +183,23 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         },
       ];
-      
+
       cardContainer.children = childTemplates.map(childTemplate => {
         const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type);
         if (!elDetails) {
           console.error(`Detalhes do elemento não encontrados para o tipo: ${childTemplate.type}`);
-          return null; 
+          return null;
         }
         return {
             id: crypto.randomUUID(),
             type: childTemplate.type,
             name: childTemplate.name || `${elDetails.label} (Card)`,
             content: childTemplate.content || elDetails.defaultContent,
-            attributes: {...(elDetails.defaultAttributes || {}), ...(childTemplate.attributes || {})},
+            attributes: childTemplate.attributes ? {...(elDetails.defaultAttributes || {}), ...childTemplate.attributes} : {...(elDetails.defaultAttributes || {})},
             styles: childTemplate.styles ? childTemplate.styles as ResponsiveStyles : { desktop: elDetails.defaultStyles || {} },
             children: []
         };
-      }).filter(Boolean) as EditorElement[]; 
+      }).filter(Boolean) as EditorElement[];
       newElementToAdd = cardContainer;
 
     } else if (itemType === 'section-columns') {
@@ -247,9 +268,9 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (newElementToAdd) {
       if (parentId) {
         const parentElement = findElementRecursive(elements, parentId);
-        const canAcceptChild = parentElement && 
-                               (parentElement.type === 'div' || 
-                                parentElement.type === 'ul' || 
+        const canAcceptChild = parentElement &&
+                               (parentElement.type === 'div' ||
+                                parentElement.type === 'ul' ||
                                 parentElement.type === 'ol' ||
                                 (parentElement.type === 'li' && newElementToAdd.type !== 'li'));
 
@@ -263,7 +284,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       selectElement(newElementToAdd.id);
     }
-  }, [elements]); 
+  }, [elements]);
 
   const updateElement = useCallback((elementId: string, updates: Partial<EditorElement>) => {
     setElements(prevElements => updateElementRecursive(prevElements, elementId, updates));
@@ -271,7 +292,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSelectedElement(prevSelected => {
         if (!prevSelected) return null;
         const updatedSelected = { ...prevSelected, ...updates };
-        if (updates.styles) { // If styles are passed directly, assume they are the full ResponsiveStyles object
+        if (updates.styles) {
           updatedSelected.styles = { ...prevSelected.styles, ...updates.styles };
         }
         if (updates.attributes) {
@@ -280,30 +301,34 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return updatedSelected;
       });
     }
-  }, [selectedElement?.id]); 
-  
+  }, [selectedElement?.id]);
+
   const updateElementStyle = useCallback((elementId: string, newStylesForCurrentBreakpoint: CSSProperties) => {
-    setElements(prevElements => 
+    setElements(prevElements =>
       prevElements.map(el => {
         if (el.id === elementId) {
           const updatedStyles = { ...el.styles };
-          updatedStyles[viewportMode] = { // Create breakpoint object if it doesn't exist
-            ...(updatedStyles[viewportMode] || {}), 
-            ...newStylesForCurrentBreakpoint 
+          updatedStyles[viewportMode] = {
+            ...(updatedStyles[viewportMode] || {}),
+            ...newStylesForCurrentBreakpoint
           };
           return { ...el, styles: updatedStyles };
         }
+        // Simplified recursive update for children:
+        // If you need deep updates for children's styles based on parent's viewport changes,
+        // this part might need to be more sophisticated or rely on updateElement.
         if (el.children && el.children.length > 0) {
-          // Recursive update for children (simplified, might need deeper traversal logic if styles are nested)
-          // For now, assuming updateElementStyle is called on a top-level or direct child element.
-          // A more robust solution would use updateElementRecursive for styles as well, passing a specific structure.
-          // Let's call updateElement which handles recursion.
+           el.children = updateElementRecursive(el.children, elementId, { 
+             styles: {
+               ...el.children.find(c => c.id === elementId)?.styles,
+               [viewportMode]: newStylesForCurrentBreakpoint
+             } as ResponsiveStyles // This is a simplification and might need adjustment
+           });
         }
         return el;
       })
     );
-    
-     // Also update selectedElement if it's the one being modified
+
     if (selectedElement?.id === elementId) {
         setSelectedElement(prevSelected => {
             if (!prevSelected) return null;
@@ -315,20 +340,20 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return { ...prevSelected, styles: updatedStyles };
         });
     }
-    // Re-trigger update on the element to ensure all states are in sync
-    // This might be redundant if setSelectedElement above is sufficient
+    // This ensures the main element object is also updated if it was found directly or in children
     const elToUpdate = findElementRecursive(elements, elementId);
     if(elToUpdate) {
         const finalStyles = {...elToUpdate.styles};
         finalStyles[viewportMode] = {
             ...(finalStyles[viewportMode] || {}),
             ...newStylesForCurrentBreakpoint
-        }
+        };
+        // We call updateElement to ensure the main 'elements' array reflects the change,
+        // especially if the element was nested.
         updateElement(elementId, { styles: finalStyles });
     }
-
-
   }, [viewportMode, updateElement, elements, selectedElement?.id]);
+
 
   const updateElementContent = useCallback((elementId: string, content: string) => {
     const element = findElementRecursive(elements, elementId);
@@ -380,6 +405,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         elements,
         selectedElement,
         viewportMode,
+        pageSettings,
         addElement,
         updateElement,
         updateElementStyle,
@@ -391,6 +417,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         moveElement,
         setElements,
         setViewportMode,
+        updatePageSetting,
       }}
     >
       {children}
