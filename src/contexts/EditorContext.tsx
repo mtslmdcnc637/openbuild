@@ -3,12 +3,13 @@
 
 import type { CSSProperties } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { EditorElement, DraggableItem, DraggableItemType } from '@/types/editor';
+import type { EditorElement, DraggableItem, DraggableItemType, ViewportMode } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
 
 interface EditorContextType {
   elements: EditorElement[];
   selectedElement: EditorElement | null;
+  viewportMode: ViewportMode;
   addElement: (itemType: DraggableItemType, parentId?: string) => void;
   updateElement: (elementId: string, updates: Partial<EditorElement>) => void;
   updateElementStyle: (elementId: string, newStyles: CSSProperties) => void;
@@ -19,6 +20,7 @@ interface EditorContextType {
   deleteElement: (elementId: string) => void;
   moveElement: (draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => void; // For future reordering
   setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>; // For direct manipulation like DND
+  setViewportMode: (mode: ViewportMode) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ const EditorContext = createContext<EditorContextType | undefined>(undefined);
 export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
+  const [viewportMode, setViewportMode] = useState<ViewportMode>('desktop');
 
   const findElementRecursive = (elementsArray: EditorElement[], elementId: string): EditorElement | null => {
     for (const el of elementsArray) {
@@ -47,6 +50,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (el.id === elementId) {
         const newEl = { ...el, ...updates };
         if (updates.styles) {
+          // TODO: When implementing responsive styles, this will need to update the correct breakpoint.
           newEl.styles = { ...el.styles, ...updates.styles };
         }
         if (updates.attributes) {
@@ -98,7 +102,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: cardContainerId,
         type: 'div',
         name: 'Card Container',
-        styles: {
+        styles: { // These are desktop styles by default for now
           padding: '1rem',
           border: '1px solid hsl(var(--border))',
           borderRadius: 'var(--radius)',
@@ -118,40 +122,46 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           type: 'img', 
           name: 'Card Image',
           attributes: { src: 'https://placehold.co/300x200.png', alt: 'Card image' },
-          styles: { width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 'calc(var(--radius) - 4px)' } // inner radius
+          styles: { width: '100%', height: 'auto', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 'calc(var(--radius) - 4px)' }
         },
         { 
           type: 'h3', 
           name: 'Card Title',
-          content: 'Card Title',
+          content: 'Título do Card',
           styles: { margin: '0', fontSize: '1.25rem', fontWeight: 'bold' }
         },
         { 
           type: 'p', 
           name: 'Card Text',
-          content: 'This is some card text content. Describe the item or feature here.',
+          content: 'Este é o texto do card. Descreva o item ou recurso aqui.',
           styles: { margin: '0', fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))', lineHeight: '1.5' }
         },
         { 
           type: 'button', 
           name: 'Card Button',
-          content: 'Learn More',
-          styles: { alignSelf: 'flex-start' } // Use default button styles from constants + this
+          content: 'Saiba Mais',
+          styles: { alignSelf: 'flex-start' }
         },
       ];
       
       cardContainer.children = childTemplates.map(childTemplate => {
-        const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type)!;
+        const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type);
+        if (!elDetails) {
+          console.error(`Detalhes do elemento não encontrados para o tipo: ${childTemplate.type}`);
+          // Retornar um elemento placeholder ou lançar um erro mais específico
+          // Por agora, vamos pular este elemento filho problemático
+          return null; 
+        }
         return {
             id: crypto.randomUUID(),
             type: childTemplate.type,
             name: childTemplate.name || `${elDetails.label} (Card)`,
             content: childTemplate.content || elDetails.defaultContent,
-            attributes: {...elDetails.defaultAttributes, ...childTemplate.attributes},
-            styles: {...elDetails.defaultStyles, ...childTemplate.styles},
+            attributes: {...(elDetails.defaultAttributes || {}), ...(childTemplate.attributes || {})},
+            styles: {...(elDetails.defaultStyles || {}), ...(childTemplate.styles || {})}, // Apply desktop styles by default
             children: []
         };
-      });
+      }).filter(Boolean) as EditorElement[]; // Filter out nulls and assert type
       
       if (parentId) {
         setElements(prevElements => addElementToParent(prevElements, parentId, cardContainer));
@@ -168,23 +178,23 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const newElement: EditorElement = {
       id: crypto.randomUUID(),
-      type: itemTemplate.type as EditorElement['type'], // Cast because itemType can be 'card' here
+      type: itemTemplate.type as EditorElement['type'],
       name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`,
       content: itemTemplate.defaultContent,
       attributes: itemTemplate.defaultAttributes ? { ...itemTemplate.defaultAttributes } : {},
-      styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {},
+      styles: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {}, // Apply desktop styles
       children: [],
     };
 
-    if ((itemTemplate.type === 'ul' || itemTemplate.type === 'ol') && newElement.type !== 'card') { // Ensure newElement.type is not card
+    if ((itemTemplate.type === 'ul' || itemTemplate.type === 'ol') && newElement.type !== 'card') {
       const listItemTemplate = AVAILABLE_ELEMENTS.find(el => el.type === 'li');
       const listItem: EditorElement = {
         id: crypto.randomUUID(),
         type: 'li',
-        name: 'List Item',
-        content: listItemTemplate?.defaultContent || 'List item',
+        name: 'Item da Lista',
+        content: listItemTemplate?.defaultContent || 'Item da lista',
         attributes: listItemTemplate?.defaultAttributes || {},
-        styles: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' },
+        styles: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' }, // Apply desktop styles
         children: [],
       };
       newElement.children.push(listItem);
@@ -196,7 +206,9 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (parentElement && (parentElement.type === 'div' || parentElement.type === 'ul' || parentElement.type === 'ol' || (parentElement.type === 'li' && newElement.type !== 'li'))) {
          setElements(prevElements => addElementToParent(prevElements, parentId, newElement));
       } else if (parentElement && parentElement.type === 'li' && newElement.type === 'li') {
-         setElements(prevElements => [...prevElements, newElement]);
+         // This case might need review: adding li directly to root if parent is li but somehow targetting root.
+         // For now, let's assume addElementToParent handles finding the correct list parent or it goes to root.
+         setElements(prevElements => addElementToParent(prevElements, parentId, newElement)); // Try to add to parent list
       } else {
         setElements(prevElements => [...prevElements, newElement]);
       }
@@ -213,6 +225,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (!prevSelected) return null;
         const updatedSelected = { ...prevSelected, ...updates };
         if (updates.styles) {
+          // TODO: Update for responsive styles
           updatedSelected.styles = { ...prevSelected.styles, ...updates.styles };
         }
         if (updates.attributes) {
@@ -224,6 +237,8 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [selectedElement?.id]); 
   
   const updateElementStyle = useCallback((elementId: string, newStyles: CSSProperties) => {
+    // TODO: This needs to be aware of the current viewportMode to update the correct style object
+    // For now, it updates the general 'styles' object.
     updateElement(elementId, { styles: newStyles });
   }, [updateElement]);
 
@@ -266,10 +281,8 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [selectedElement?.id]);
 
   const moveElement = useCallback((draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => {
-    console.log("Move element:", draggedId, targetId, position);
-    // Placeholder for DND reordering logic - This needs a robust implementation
-    // For example, removing the element and re-inserting it at the new position
-    // Needs to handle hierarchical structures correctly.
+    // console.log("Move element:", draggedId, targetId, position);
+    // Placeholder
   }, []);
 
 
@@ -278,6 +291,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         elements,
         selectedElement,
+        viewportMode,
         addElement,
         updateElement,
         updateElementStyle,
@@ -288,6 +302,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         deleteElement,
         moveElement,
         setElements,
+        setViewportMode,
       }}
     >
       {children}
@@ -298,7 +313,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 export const useEditor = (): EditorContextType => {
   const context = useContext(EditorContext);
   if (context === undefined) {
-    throw new Error('useEditor must be used within an EditorProvider');
+    throw new Error('useEditor deve ser usado dentro de um EditorProvider');
   }
   return context;
 };

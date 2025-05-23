@@ -39,7 +39,7 @@ export interface EditorElement {
     strokeWidth?: string | number; // For icon
     [key: string]: string | number | boolean | undefined; // Allow other HTML attributes
   };
-  styles: CSSProperties;
+  styles: CSSProperties; // TODO: Refactor to support responsive styles per breakpoint
   children: EditorElement[]; // For nesting
 }
 
@@ -57,3 +57,5 @@ export interface Point {
   x: number;
   y: number;
 }
+
+export type ViewportMode = 'desktop' | 'tablet' | 'mobile';
