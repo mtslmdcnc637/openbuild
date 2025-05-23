@@ -58,6 +58,19 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
     },
   },
   {
+    type: 'icon',
+    label: 'Icon',
+    defaultAttributes: {
+      iconName: 'Smile', // Default icon from lucide-react
+      size: '24',       // Default size as string for input consistency
+      strokeWidth: '2', // Default strokeWidth as string
+    },
+    defaultStyles: {
+      color: 'currentColor', // Inherits color from parent by default
+      display: 'inline-block', // Ensures proper layout
+    },
+  },
+  {
     type: 'span',
     label: 'Text Span',
     defaultContent: 'Inline text',

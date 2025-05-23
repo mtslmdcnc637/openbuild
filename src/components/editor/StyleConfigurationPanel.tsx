@@ -15,6 +15,7 @@ import { suggestElementStyle, type SuggestElementStyleInput } from '@/ai/flows/s
 import { parseCssStringToStyleObject } from '@/lib/style-utils';
 import { toast } from '@/hooks/use-toast';
 import { Trash2, Wand2, PlusCircle } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 const commonFontFamilies = [
   { label: "System UI", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
@@ -85,6 +86,10 @@ const objectFitOptions = [
     { label: 'Scale Down', value: 'scale-down' },
 ];
 
+// Get a list of Lucide icon names for a dropdown (optional, text input is simpler for now)
+// const lucideIconNames = Object.keys(LucideIcons).filter(key => key !== 'createLucideIcon' && key !== 'icons');
+// const iconOptions = lucideIconNames.map(name => ({ label: name, value: name }));
+
 
 export function StyleConfigurationPanel() {
   const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement } = useEditor();
@@ -142,10 +147,10 @@ export function StyleConfigurationPanel() {
     updateElementName(selectedElement.id, e.target.value);
   };
   
-  const handleAttributeChangeLocal = (attrName: string, value: string) => {
-    const newAttributes = { ...attributes, [attrName]: value };
+  const handleAttributeChangeLocal = (attrName: string, value: string | number) => {
+    const newAttributes = { ...attributes, [attrName]: String(value) }; // Ensure value is string for consistency
     setAttributes(newAttributes); // Update local state for controlled input
-    updateElementAttribute(selectedElement.id, attrName, value);
+    updateElementAttribute(selectedElement.id, attrName, String(value));
   };
 
   const handleAiStyleSuggest = async () => {
@@ -198,7 +203,6 @@ export function StyleConfigurationPanel() {
     // This needs robust implementation if deep nesting is common.
     // Or, the addElement in context could be smarter.
     // For now, if selectedElement is 'li', assume its parent is what we need, but this is not robust for deep nesting
-    // A better approach might be to pass path or have context manage parent-child relationships more explicitly for add operations.
     // console.warn("findParentListId is a placeholder and needs robust implementation for deep nesting.");
     return selectedElement?.id; // This is incorrect if LI is selected.
                                 // We need a way to get parent ID from context or pass it
@@ -273,6 +277,46 @@ export function StyleConfigurationPanel() {
           </div>
         </React.Fragment>
       );
+    } else if (selectedElement.type === 'icon') {
+      commonInputs.push(
+        <React.Fragment key="icon-attrs">
+          <div className="space-y-1">
+            <Label htmlFor="iconName" className="text-xs">Icon Name (Lucide)</Label>
+            <Input
+              id="iconName"
+              type="text"
+              value={attributes.iconName as string || 'Smile'}
+              onChange={(e) => handleAttributeChangeLocal('iconName', e.target.value)}
+              placeholder="e.g., Smile, Home, Settings"
+              className="h-8 text-xs"
+            />
+            <p className="text-xs text-muted-foreground">Find names at lucide.dev</p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="iconSize" className="text-xs">Size (px)</Label>
+            <Input
+              id="iconSize"
+              type="number"
+              value={attributes.size as string || '24'}
+              onChange={(e) => handleAttributeChangeLocal('size', e.target.value)}
+              placeholder="24"
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="iconStrokeWidth" className="text-xs">Stroke Width</Label>
+            <Input
+              id="iconStrokeWidth"
+              type="number"
+              step="0.1"
+              value={attributes.strokeWidth as string || '2'}
+              onChange={(e) => handleAttributeChangeLocal('strokeWidth', e.target.value)}
+              placeholder="2"
+              className="h-8 text-xs"
+            />
+          </div>
+        </React.Fragment>
+      );
     } else if (selectedElement.type === 'a') {
       commonInputs.push(
         <div className="space-y-1" key="a-href">
@@ -324,7 +368,7 @@ export function StyleConfigurationPanel() {
   };
 
   const isFlexOrGrid = ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(localStyles.display || '');
-  const canHaveChildren = ['div', 'ul', 'ol', 'li'].includes(selectedElement.type); // Expand as needed
+  const canHaveChildren = ['div', 'ul', 'ol', 'li'].includes(selectedElement.type);
 
   return (
     <div className="p-4 border-l h-full bg-card flex flex-col">
@@ -342,7 +386,6 @@ export function StyleConfigurationPanel() {
           </div>
 
           {renderContentInput()}
-          {renderAttributeInputs()}
           
           {(selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li') && (
             <Button onClick={handleAddListItem} variant="outline" size="sm" className="w-full mt-2">
@@ -351,11 +394,11 @@ export function StyleConfigurationPanel() {
           )}
 
 
-          <Accordion type="multiple" defaultValue={['layout', 'typography', 'appearance', 'attributes']} className="w-full">
+          <Accordion type="multiple" defaultValue={['attributes', 'layout', 'typography', 'appearance']} className="w-full">
              <AccordionItem value="attributes">
                 <AccordionTrigger className="text-sm font-medium py-2">Attributes</AccordionTrigger>
                 <AccordionContent className="space-y-2 pt-1">
-                    {/* Generic attribute editor could go here, or specific ones */}
+                    {renderAttributeInputs()}
                     {selectedElement.type === 'img' && (
                         <StylePropertyInput label="Object Fit" propertyName="objectFit" value={localStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Select object fit"/>
                     )}
@@ -369,7 +412,7 @@ export function StyleConfigurationPanel() {
                 <StylePropertyInput label="Height" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
                 <StylePropertyInput label="Padding" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px or 10px 20px" />
                 <StylePropertyInput label="Margin" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px or 0 auto" />
-                {(canHaveChildren || selectedElement.type === 'button' || selectedElement.type === 'input' || selectedElement.type === 'textarea' || selectedElement.type === 'p' || selectedElement.type === 'h1' || selectedElement.type === 'h2' || selectedElement.type === 'h3' || selectedElement.type === 'span' || selectedElement.type === 'label' || selectedElement.type === 'a' ) && (
+                {(canHaveChildren || selectedElement.type === 'button' || selectedElement.type === 'input' || selectedElement.type === 'textarea' || selectedElement.type === 'p' || selectedElement.type === 'h1' || selectedElement.type === 'h2' || selectedElement.type === 'h3' || selectedElement.type === 'span' || selectedElement.type === 'label' || selectedElement.type === 'a' || selectedElement.type === 'icon' ) && (
                   <>
                     <StylePropertyInput label="Display" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Select display type"/>
                     {isFlexOrGrid && (

@@ -17,7 +17,8 @@ export type EditorElementType =
   | 'hr'  // Horizontal Rule
   | 'input' // Form input
   | 'textarea' // Form textarea
-  | 'label'; // Form label
+  | 'label' // Form label
+  | 'icon'; // Icon element
 
 export interface EditorElement {
   id: string;
@@ -32,6 +33,9 @@ export interface EditorElement {
     type?: string; // For input
     placeholder?: string; // For input, textarea
     value?: string; // For input (prefer over content for input type text)
+    iconName?: string; // For icon
+    size?: string | number; // For icon
+    strokeWidth?: string | number; // For icon
     [key: string]: string | number | boolean | undefined; // Allow other HTML attributes
   };
   styles: CSSProperties;

@@ -7,6 +7,7 @@ import type { EditorElement } from '@/types/editor';
 import { useEditor } from '@/contexts/EditorContext';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import * as LucideIcons from 'lucide-react'; // Import all for dynamic access
 
 interface RenderedElementProps {
   element: EditorElement;
@@ -76,40 +77,38 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
 
 
   // Common props for the wrapper/main element
-  const commonProps = {
+  const commonProps: React.HTMLAttributes<HTMLElement> & { style?: CSSProperties } = {
     style: element.styles,
     onClick: handleClick,
     className: cn(
-      'outline-offset-2 transition-all duration-100 ease-in-out relative', // Added relative for potential absolute children/badges
+      'outline-offset-2 transition-all duration-100 ease-in-out relative', 
       isSelected ? 'outline outline-2 outline-accent ring-2 ring-accent' : 'outline outline-1 outline-transparent hover:outline-blue-300',
-      // Apply consistent drag-over styles for droppable containers
       ['div', 'ul', 'ol', 'li'].includes(element.type) && 'min-h-[50px] border-dashed border-transparent',
       ['div', 'ul', 'ol', 'li'].includes(element.type) && 'drag-over-active:border-accent drag-over-active:bg-accent/10'
     ),
     'data-element-id': element.id,
     'data-element-type': element.type,
-    onDragOver: ['div', 'ul', 'ol', 'li'].includes(element.type) ? handleDragOver : undefined,
-    onDragLeave: ['div', 'ul', 'ol', 'li'].includes(element.type) ? handleDragLeave : undefined,
-    onDrop: ['div', 'ul', 'ol', 'li'].includes(element.type) ? handleDrop : undefined,
   };
+  
+  // Assign drag handlers only to droppable elements
+  if (['div', 'ul', 'ol', 'li'].includes(element.type)) {
+    commonProps.onDragOver = handleDragOver;
+    commonProps.onDragLeave = handleDragLeave;
+    commonProps.onDrop = handleDrop;
+  }
 
 
   if (element.type === 'img') {
     const imgStyles = { ...element.styles };
-    // next/image handles width/height via props, not style for layout, but objectFit can be in style
     const imageWidth = parseInt(String(imgStyles.width) || '100', 10);
     const imageHeight = parseInt(String(imgStyles.height) || '100', 10);
-    // remove from style object passed to wrapper div, as next/image uses props.
     delete imgStyles.width;
     delete imgStyles.height;
 
     return (
-      <div // Wrapper for selection, click events, and layout styles (margin, etc.)
+      <div 
         {...commonProps}
-        style={{ display: 'inline-block', ...imgStyles }} // ensure wrapper takes only necessary space and other styles
-        onDragOver={undefined} // Images are not drop targets
-        onDragLeave={undefined}
-        onDrop={undefined}
+        style={{ display: 'inline-block', ...imgStyles }} 
       >
         <Image
           src={element.attributes?.src || 'https://placehold.co/100x100.png'}
@@ -123,6 +122,43 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
       </div>
     );
   }
+
+  if (element.type === 'icon') {
+    const { iconName = 'Smile', size = '24', strokeWidth = '2' } = element.attributes || {};
+    // Ensure iconName is a string and a valid key in LucideIcons
+    const validIconName = typeof iconName === 'string' ? iconName : 'Smile';
+    const IconComponent = (LucideIcons as any)[validIconName] || LucideIcons.AlertTriangle; // Fallback to AlertTriangle if name is invalid
+
+    const numSize = parseInt(size as string, 10) || 24;
+    const numStrokeWidth = parseFloat(strokeWidth as string) || 2;
+
+    // Combine element.styles with default display for wrapper
+    const wrapperStyles = {
+      ...element.styles,
+      display: element.styles.display || 'inline-flex', // Default to inline-flex if not specified
+      alignItems: element.styles.alignItems || 'center',
+      justifyContent: element.styles.justifyContent || 'center',
+    };
+    
+    // Remove specific icon-related style props from commonProps if they exist to avoid conflicts
+    const { color, ...restCommonStyles } = commonProps.style || {};
+
+
+    return (
+      <div 
+        {...commonProps}
+        style={wrapperStyles} // Use combined styles for the wrapper
+      >
+        <IconComponent
+          size={numSize}
+          color={element.styles.color as string || 'currentColor'}
+          strokeWidth={numStrokeWidth}
+          draggable={false} // Icons themselves are not draggable in this context
+        />
+      </div>
+    );
+  }
+
 
   if (element.type === 'hr') {
     return <hr {...commonProps} {...element.attributes} />;
@@ -138,10 +174,6 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
             placeholder={element.attributes?.placeholder as string || ''}
             value={element.attributes?.value as string || ''}
             onChange={handleInputChange}
-            // Inputs are not drop targets generally
-            onDragOver={undefined}
-            onDragLeave={undefined}
-            onDrop={undefined}
         />
     );
   }
@@ -153,17 +185,12 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
             {...commonProps}
             {...tagSpecificAttributes}
             placeholder={element.attributes?.placeholder as string || ''}
-            value={element.content || ''} // Textarea value from content
+            value={element.content || ''} 
             onChange={handleInputChange}
-            // Textareas are not drop targets
-            onDragOver={undefined}
-            onDragLeave={undefined}
-            onDrop={undefined}
         />
     );
   }
   
-  // For label, use htmlFor attribute
   if (element.type === 'label') {
     const { htmlFor, ...otherAttrs } = element.attributes || {};
     return (
@@ -171,30 +198,20 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
         {...commonProps}
         htmlFor={htmlFor as string || undefined}
         {...otherAttrs}
-        // Labels are not typically drop targets themselves
-        onDragOver={undefined}
-        onDragLeave={undefined}
-        onDrop={undefined}
       >
         {element.content}
-        {/* Labels typically don't have complex children in this editor context */}
       </label>
     );
   }
 
-
   const Tag = element.type as keyof JSX.IntrinsicElements;
 
-  // Default rendering for other elements (div, p, h1, button, span, ul, ol, li, a)
-  return (
-    <Tag
-      {...commonProps}
-      {...element.attributes} // Spread other attributes like href for 'a'
-    >
-      {element.content /* Render text content directly */}
-      {element.children && element.children.map((child, index) => (
-        <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
-      ))}
-    </Tag>
+  return React.createElement(
+    Tag,
+    { ...commonProps, ...element.attributes },
+    element.content,
+    element.children && element.children.map((child, index) => (
+      <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
+    ))
   );
 }
