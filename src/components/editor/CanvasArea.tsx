@@ -19,7 +19,7 @@ export function CanvasArea() {
     const item = JSON.parse(itemDataString) as DraggableItem | { id: string };
 
     if ('id' in item && item.id) {
-      // moveElement(item.id, null);
+      // moveElement(item.id, null); // Lógica de mover existente, se necessário
     }
     else if ('type' in item && item.type) {
       addElement(item.type);
@@ -43,40 +43,41 @@ export function CanvasArea() {
     }
   };
 
-  const canvasContentStyles: React.CSSProperties = {
-    backgroundColor: pageSettings.bodyBackgroundColor || undefined, // Use undefined if empty to allow CSS fallback
+  const pageStyleOverrides: React.CSSProperties = {
+    backgroundColor: pageSettings.bodyBackgroundColor || undefined,
     backgroundImage: pageSettings.bodyBackgroundImageUrl ? `url(${pageSettings.bodyBackgroundImageUrl})` : undefined,
-    backgroundSize: 'cover', // Sensible default
-    backgroundPosition: 'center', // Sensible default
-    backgroundRepeat: 'no-repeat', // Sensible default
+    backgroundSize: pageSettings.bodyBackgroundImageUrl ? 'cover' : undefined,
+    backgroundPosition: pageSettings.bodyBackgroundImageUrl ? 'center' : undefined,
+    backgroundRepeat: pageSettings.bodyBackgroundImageUrl ? 'no-repeat' : undefined,
   };
 
 
   const canvasWrapperClasses = cn(
-    "mx-auto transition-all duration-300 ease-in-out shadow-lg", // Removed bg-background here, will be set by canvasContentStyles
-    "border-2 border-dashed border-transparent",
+    "mx-auto transition-all duration-300 ease-in-out shadow-lg",
+    "border-2 border-dashed border-transparent", // Para feedback de drag-over
     "drag-over-active:border-accent drag-over-active:bg-accent/10",
     {
-      'w-full min-h-full': viewportMode === 'desktop',
-      'max-w-2xl w-full border border-border bg-card': viewportMode === 'tablet', // bg-card for tablet/mobile to contrast with editor bg
-      'max-w-sm w-full border border-border bg-card': viewportMode === 'mobile', // bg-card for tablet/mobile
+      'w-full': viewportMode === 'desktop',
+      'max-w-2xl w-full border border-border bg-card': viewportMode === 'tablet',
+      'max-w-sm w-full border border-border bg-card': viewportMode === 'mobile',
     }
   );
 
-  const canvasContentHeight = elements.length === 0
-    ? (viewportMode === 'desktop' ? 'calc(100vh - 150px)' : '80vh')
-    : 'auto';
-
+  // Define a altura mínima consistente para o canvas content wrapper
+  // Ajuste o valor '150px' se a altura do cabeçalho + paddings mudar.
+  const canvasContentMinHeight = viewportMode === 'desktop'
+    ? 'calc(100vh - 130px)' // Altura total da viewport menos altura do header e paddings verticais
+    : '80vh'; // Para tablet/mobile, onde o canvas é centralizado e pode ter mais espaço ao redor.
 
   return (
     <ScrollArea
-      className="h-full flex-grow relative"
+      className="h-full flex-grow relative" // ScrollArea ocupa todo o espaço disponível
     >
       <div
         id="canvas-root-wrapper"
         className={cn(
-          "p-4 md:p-8 min-h-full w-full flex",
-          viewportMode !== 'desktop' ? "items-start justify-center" : ""
+          "p-4 md:p-8 min-h-full w-full flex", // min-h-full aqui garante que o wrapper ocupe a altura do ScrollArea
+          viewportMode !== 'desktop' ? "items-start justify-center" : "" // Centraliza em tablet/mobile
         )}
         onClick={handleCanvasClick}
       >
@@ -87,9 +88,9 @@ export function CanvasArea() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           style={{
-            ...canvasContentStyles, // Apply dynamic body styles here
-            minHeight: canvasContentHeight,
-            height: elements.length > 0 ? 'auto' : undefined
+            ...pageStyleOverrides,
+            minHeight: canvasContentMinHeight, // Aplica a altura mínima consistente
+            // height: 'auto' é o padrão para divs, permitindo que cresça com o conteúdo
           }}
         >
           {elements.length === 0 && (
