@@ -8,7 +8,7 @@ import { useEditor } from '@/contexts/EditorContext';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import * as LucideIcons from 'lucide-react';
-import { getComputedStyles } from '@/lib/style-utils'; // Import the new helper
+import { getComputedStyles } from '@/lib/style-utils';
 
 interface RenderedElementProps {
   element: EditorElement;
@@ -19,7 +19,7 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
   const { selectElement, selectedElement, addElement, moveElement, updateElementContent, updateElementAttribute, viewportMode } = useEditor();
 
   const isSelected = selectedElement?.id === element.id;
-  const computedStyles = getComputedStyles(element.styles, viewportMode); // Compute styles based on viewport
+  const computedStyles = getComputedStyles(element.styles, viewportMode);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -74,10 +74,10 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
   };
 
   const commonProps: React.HTMLAttributes<HTMLElement> & { style?: CSSProperties } = {
-    style: computedStyles, // Use computed styles
+    style: computedStyles,
     onClick: handleClick,
     className: cn(
-      'outline-offset-2 transition-all duration-100 ease-in-out relative', 
+      'outline-offset-2 transition-all duration-100 ease-in-out relative hover:cursor-pointer', 
       isSelected ? 'outline outline-2 outline-accent ring-2 ring-accent' : 'outline outline-1 outline-transparent hover:outline-blue-300',
       ['div', 'ul', 'ol', 'li'].includes(element.type) && 'min-h-[50px] border-dashed border-transparent',
       ['div', 'ul', 'ol', 'li'].includes(element.type) && 'drag-over-active:border-accent drag-over-active:bg-accent/10'
@@ -93,28 +93,34 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
   }
 
   if (element.type === 'img') {
-    const imgStyles = { ...computedStyles }; // Use computed styles
+    const imgStyles = { ...computedStyles }; 
     const imageWidth = parseInt(String(imgStyles.width) || '100', 10);
     const imageHeight = parseInt(String(imgStyles.height) || '100', 10);
-    // next/image handles width & height via props, so remove them from inline style for the wrapper div
-    // if they are meant for the image itself.
-    // For objectFit, it's better to apply it directly to the Image component style prop.
+    
     const wrapperSpecificStyles: CSSProperties = { ...imgStyles };
     delete wrapperSpecificStyles.width;
     delete wrapperSpecificStyles.height;
     delete wrapperSpecificStyles.objectFit;
 
 
+    // For img, the commonProps (like click and outline) should be on a wrapper div.
+    // The next/image itself shouldn't have these interactive props directly if we want styling on the wrapper.
     return (
       <div 
-        {...commonProps}
-        style={{ display: 'inline-block', ...wrapperSpecificStyles }} // Apply remaining styles to wrapper
+        style={{ display: computedStyles.display || 'inline-block', ...wrapperSpecificStyles }} // Apply remaining styles to wrapper
+        onClick={handleClick} // Click on wrapper for selection
+        className={cn(
+          'outline-offset-2 transition-all duration-100 ease-in-out relative hover:cursor-pointer',
+          isSelected ? 'outline outline-2 outline-accent ring-2 ring-accent' : 'outline outline-1 outline-transparent hover:outline-blue-300'
+        )}
+        data-element-id={element.id} // Ensure ID is on the clickable wrapper
+        data-element-type={element.type}
       >
         <Image
           src={element.attributes?.src || 'https://placehold.co/100x100.png'}
           alt={element.attributes?.alt || 'Imagem'}
-          width={imageWidth || 100} // Use parsed width or default
-          height={imageHeight || 100} // Use parsed height or default
+          width={imageWidth || 100} 
+          height={imageHeight || 100} 
           style={{ objectFit: computedStyles.objectFit as CSSProperties['objectFit'] || 'cover' }}
           data-ai-hint={element.attributes?.src?.includes('placehold.co') ? "abstract placeholder" : ""}
           draggable={false}
@@ -131,23 +137,25 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     const numSize = parseInt(size as string, 10) || 24;
     const numStrokeWidth = parseFloat(strokeWidth as string) || 2;
 
+    // For icon, the commonProps (like click and outline) should be on a wrapper div.
     const wrapperStyles = {
-      ...computedStyles, // Use computed styles
+      ...computedStyles,
       display: computedStyles.display || 'inline-flex',
       alignItems: computedStyles.alignItems || 'center',
       justifyContent: computedStyles.justifyContent || 'center',
+      // Remove color from wrapper if it's meant for the icon itself
     };
-    
-    const { color, ...restCommonStyles } = commonProps.style || {};
+    delete wrapperStyles.color;
+
 
     return (
       <div 
-        {...commonProps}
-        style={wrapperStyles}
+        {...commonProps} // Apply common interactive props and outlines to the wrapper
+        style={wrapperStyles} // Wrapper styles without icon-specific color
       >
         <IconComponent
           size={numSize}
-          color={computedStyles.color as string || 'currentColor'}
+          color={computedStyles.color as string || 'currentColor'} // Icon gets its color from computedStyles
           strokeWidth={numStrokeWidth}
           draggable={false}
         />
@@ -155,7 +163,10 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     );
   }
 
+  // Void elements don't have children or content in the same way
   if (element.type === 'hr') {
+    // HR doesn't have content or children in the typical sense.
+    // We pass commonProps for styling, selection, etc.
     return <hr {...commonProps} {...element.attributes} />;
   }
   
@@ -173,6 +184,7 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
     );
   }
 
+  // Textarea is not a void element, it takes content between its tags
   if (element.type === 'textarea') {
      const { children, ...tagSpecificAttributes } = element.attributes || {};
     return (
@@ -201,22 +213,23 @@ export function RenderedElement({ element, path }: RenderedElementProps) {
 
   const Tag = element.type as keyof JSX.IntrinsicElements;
 
-  // For non-void elements, pass down children
-  if (React.createElement(Tag).props.children !== undefined && element.children && element.children.length > 0) {
+  // For non-void elements that can have children
+  if (element.children && element.children.length > 0) {
     return React.createElement(
       Tag,
       { ...commonProps, ...element.attributes },
-      element.content,
+      element.content, // Render direct content if any
       element.children.map((child, index) => (
         <RenderedElement key={child.id} element={child} path={`${path}.${index}`} />
       ))
     );
   }
   
-  // For void elements or elements without children property in JSX, or no children in data
+  // For non-void elements without children (but might have content)
+  // or elements that are technically not void but don't typically have React children in this editor model (e.g., p, h1, button)
   return React.createElement(
     Tag,
     { ...commonProps, ...element.attributes },
-    element.content
+    element.content // Render content for p, h1, button, span etc.
   );
 }
