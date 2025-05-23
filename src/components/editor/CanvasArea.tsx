@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { DragEvent } from 'react';
@@ -15,15 +16,13 @@ export function CanvasArea() {
     const itemDataString = e.dataTransfer.getData('application/json');
     if (!itemDataString) return;
     
-    const item = JSON.parse(itemDataString) as DraggableItem | { id: string }; // Item can be new or existing
+    const item = JSON.parse(itemDataString) as DraggableItem | { id: string }; 
 
-    // If item has an ID, it's an existing element being moved
     if ('id' in item && item.id) {
-      // Logic for reordering on root canvas.
-      // For simplicity, we only allow dropping new elements on root for now.
-      // moveElement(item.id, null); // null targetId means root
+      // Lógica para reordenar no canvas raiz.
+      // Por simplicidade, permitimos apenas soltar novos elementos na raiz por enquanto.
+      // moveElement(item.id, null); // targetId nulo significa raiz
     } 
-    // If item has a type, it's a new element from the panel
     else if ('type' in item && item.type) {
       addElement(item.type);
     }
@@ -31,7 +30,7 @@ export function CanvasArea() {
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
     e.dataTransfer.dropEffect = "copy";
     e.currentTarget.classList.add('drag-over-active');
   };
@@ -41,7 +40,6 @@ export function CanvasArea() {
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // If the click is directly on the canvas (not on an element), deselect.
     if (e.target === e.currentTarget) {
       selectElement(null);
     }
@@ -61,15 +59,12 @@ export function CanvasArea() {
         onClick={handleCanvasClick}
         id="canvas-root"
         style={{
-          // This is a fallback if min-h-full isn't enough, e.g. for absolutely positioned elements
-          // or if ScrollArea somehow constrains its child.
-          // Normally, min-h-full on the direct child of ScrollArea viewport should work.
-           height: elements.length === 0 ? 'calc(100vh - 150px)' : 'auto' // Ensure droppable area when empty
+           height: elements.length === 0 ? 'calc(100vh - 150px)' : 'auto' 
         }}
       >
         {elements.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground pointer-events-none">
-            <p>Drag and drop elements here</p>
+            <p>Arraste e solte os elementos aqui</p>
           </div>
         )}
         {elements.map((element, index) => (

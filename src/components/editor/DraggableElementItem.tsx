@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DraggableItem } from '@/types/editor';
@@ -21,7 +22,7 @@ export function DraggableElementItem({ item }: DraggableElementItemProps) {
       className="w-full justify-start cursor-grab active:cursor-grabbing flex items-center gap-2 mb-2 shadow-sm hover:shadow-md transition-shadow"
       draggable
       onDragStart={handleDragStart}
-      aria-label={`Drag to add ${item.label}`}
+      aria-label={`Arrastar para adicionar ${item.label}`}
     >
       <GripVertical className="h-4 w-4 text-muted-foreground" />
       <span className="text-sm">{item.label}</span>

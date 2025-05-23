@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -15,7 +16,7 @@ export function EditorLayout() {
   const { elements } = useEditor();
 
   const handleExportHtml = () => {
-    const htmlContent = generateHtmlDocument(elements, "My Awesome Page");
+    const htmlContent = generateHtmlDocument(elements, "Minha Página Incrível");
     downloadHtmlFile(htmlContent);
   };
 
@@ -25,7 +26,7 @@ export function EditorLayout() {
         <CodeCanvasLogo />
         <Button onClick={handleExportHtml} variant="default" size="sm">
           <Download className="mr-2 h-4 w-4" />
-          Export HTML
+          Exportar HTML
         </Button>
       </header>
       <div className="flex flex-1 overflow-hidden">

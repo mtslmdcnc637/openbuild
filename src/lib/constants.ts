@@ -4,32 +4,32 @@ import type { DraggableItem } from '@/types/editor';
 export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   {
     type: 'h1',
-    label: 'Heading 1',
-    defaultContent: 'Main Heading',
+    label: 'Título Principal (H1)',
+    defaultContent: 'Título Principal',
     defaultStyles: { fontSize: '2.5rem', fontWeight: 'bold', margin: '1rem 0' },
   },
   {
     type: 'h2',
-    label: 'Heading 2',
-    defaultContent: 'Subheading',
+    label: 'Subtítulo (H2)',
+    defaultContent: 'Subtítulo',
     defaultStyles: { fontSize: '2rem', fontWeight: 'bold', margin: '0.8rem 0' },
   },
   {
     type: 'h3',
-    label: 'Heading 3',
-    defaultContent: 'Section Heading',
+    label: 'Título de Seção (H3)',
+    defaultContent: 'Título da Seção',
     defaultStyles: { fontSize: '1.75rem', fontWeight: 'bold', margin: '0.7rem 0' },
   },
   {
     type: 'p',
-    label: 'Paragraph',
-    defaultContent: 'This is a paragraph. You can edit this text.',
+    label: 'Parágrafo',
+    defaultContent: 'Este é um parágrafo. Você pode editar este texto.',
     defaultStyles: { fontSize: '1rem', margin: '0.5rem 0', lineHeight: '1.6' },
   },
   {
     type: 'button',
-    label: 'Button',
-    defaultContent: 'Click Me',
+    label: 'Botão',
+    defaultContent: 'Clique Aqui',
     defaultStyles: {
       padding: '0.75rem 1.5rem',
       fontSize: '1rem',
@@ -42,7 +42,7 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   },
   {
     type: 'div',
-    label: 'Container (Div)',
+    label: 'Contêiner (Div)',
     defaultStyles: {
       padding: '1rem',
       minHeight: '100px',
@@ -52,10 +52,10 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   },
   {
     type: 'img',
-    label: 'Image',
+    label: 'Imagem',
     defaultAttributes: {
       src: 'https://placehold.co/200x150.png',
-      alt: 'Placeholder image',
+      alt: 'Imagem de exemplo',
     },
     defaultStyles: {
       width: '200px',
@@ -65,66 +65,62 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   },
   {
     type: 'icon',
-    label: 'Icon',
+    label: 'Ícone',
     defaultAttributes: {
-      iconName: 'Smile', // Default icon from lucide-react
-      size: '24',       // Default size as string for input consistency
-      strokeWidth: '2', // Default strokeWidth as string
+      iconName: 'Smile', // Nome do ícone Lucide
+      size: '24',
+      strokeWidth: '2',
     },
     defaultStyles: {
-      color: 'currentColor', // Inherits color from parent by default
-      display: 'inline-block', // Ensures proper layout
+      color: 'currentColor',
+      display: 'inline-block',
     },
   },
   {
     type: 'span',
-    label: 'Text Span',
-    defaultContent: 'Inline text',
+    label: 'Texto (Span)',
+    defaultContent: 'Texto em linha',
     defaultStyles: { fontSize: '1rem' },
   },
   {
     type: 'ul',
-    label: 'Unordered List',
+    label: 'Lista (Não Ordenada)',
     defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
-    // Children (li) will be added by EditorContext
   },
   {
     type: 'ol',
-    label: 'Ordered List',
+    label: 'Lista (Ordenada)',
     defaultStyles: { margin: '0.5rem 0', paddingLeft: '40px' },
-    // Children (li) will be added by EditorContext
   },
-  // 'li' is not directly draggable but created by 'ul'/'ol' or 'Add List Item' button
   {
     type: 'a',
     label: 'Link',
-    defaultContent: 'Link Text',
+    defaultContent: 'Texto do Link',
     defaultAttributes: { href: '#' },
     defaultStyles: { color: 'hsl(var(--primary))', textDecoration: 'underline', cursor: 'pointer' },
   },
   {
     type: 'hr',
-    label: 'Divider (HR)',
+    label: 'Divisor (Linha)',
     defaultStyles: { borderTop: '1px solid hsl(var(--border))', margin: '1rem 0', height: 'auto', width: '100%' },
   },
   {
     type: 'input',
-    label: 'Text Input',
-    // No defaultContent for input, value is an attribute
-    defaultAttributes: { type: 'text', placeholder: 'Enter text...' },
+    label: 'Campo de Texto',
+    defaultAttributes: { type: 'text', placeholder: 'Digite o texto...' },
     defaultStyles: {
       padding: '0.5rem',
       border: '1px solid hsl(var(--input))',
       borderRadius: 'var(--radius)',
       width: '100%',
-      boxSizing: 'border-box', // Ensure padding and border are inside width
+      boxSizing: 'border-box',
     },
   },
   {
     type: 'textarea',
-    label: 'Textarea',
-    defaultContent: '', // Content will be the value
-    defaultAttributes: { placeholder: 'Enter more text...' },
+    label: 'Área de Texto',
+    defaultContent: '',
+    defaultAttributes: { placeholder: 'Digite mais texto...' },
     defaultStyles: {
       padding: '0.5rem',
       border: '1px solid hsl(var(--input))',
@@ -136,14 +132,13 @@ export const AVAILABLE_ELEMENTS: DraggableItem[] = [
   },
   {
     type: 'label',
-    label: 'Label',
-    defaultContent: 'Label Text',
+    label: 'Rótulo (Label)',
+    defaultContent: 'Texto do Rótulo',
     defaultAttributes: { htmlFor: '' },
-    defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: 'medium' },
+    defaultStyles: { display: 'block', marginBottom: '0.25rem', fontWeight: '500' }, // fontWeight changed to medium
   },
   {
-    type: 'card', // This is a meta-type for the panel, it will create a div with children
-    label: 'Card',
-    // defaultStyles, defaultContent, defaultAttributes are handled by EditorContext for 'card'
+    type: 'card',
+    label: 'Cartão (Card)',
   },
 ];

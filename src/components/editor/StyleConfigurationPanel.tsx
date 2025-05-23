@@ -18,7 +18,7 @@ import { Trash2, Wand2, PlusCircle } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
 const commonFontFamilies = [
-  { label: "System UI", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
+  { label: "Padrão do Sistema", value: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" },
   { label: "Arial", value: "Arial, Helvetica, sans-serif" },
   { label: "Verdana", value: "Verdana, Geneva, sans-serif" },
   { label: "Tahoma", value: "Tahoma, Geneva, sans-serif" },
@@ -30,15 +30,15 @@ const commonFontFamilies = [
 ];
 
 const textAlignOptions = [
-  { label: 'Left', value: 'left' },
-  { label: 'Center', value: 'center' },
-  { label: 'Right', value: 'right' },
-  { label: 'Justify', value: 'justify' },
+  { label: 'Esquerda', value: 'left' },
+  { label: 'Centro', value: 'center' },
+  { label: 'Direita', value: 'right' },
+  { label: 'Justificado', value: 'justify' },
 ];
 
 const fontWeightOptions = [
   { label: 'Normal', value: 'normal' },
-  { label: 'Bold', value: 'bold' },
+  { label: 'Negrito', value: 'bold' },
   { label: '100', value: '100' },
   { label: '200', value: '200' },
   { label: '300', value: '300' },
@@ -51,45 +51,40 @@ const fontWeightOptions = [
 ];
 
 const displayOptions = [
-  { label: 'Block', value: 'block' },
-  { label: 'Inline', value: 'inline' },
-  { label: 'Inline Block', value: 'inline-block' },
-  { label: 'Flex', value: 'flex' },
-  { label: 'Inline Flex', value: 'inline-flex' },
-  { label: 'Grid', value: 'grid' },
-  { label: 'Inline Grid', value: 'inline-grid' },
-  { label: 'None', value: 'none' },
+  { label: 'Bloco (block)', value: 'block' },
+  { label: 'Em Linha (inline)', value: 'inline' },
+  { label: 'Bloco em Linha (inline-block)', value: 'inline-block' },
+  { label: 'Flexível (flex)', value: 'flex' },
+  { label: 'Flexível em Linha (inline-flex)', value: 'inline-flex' },
+  { label: 'Grade (grid)', value: 'grid' },
+  { label: 'Grade em Linha (inline-grid)', value: 'inline-grid' },
+  { label: 'Nenhum (none)', value: 'none' },
 ];
 
 const alignItemsOptions = [
-  { label: 'Start', value: 'flex-start' },
-  { label: 'End', value: 'flex-end' },
-  { label: 'Center', value: 'center' },
-  { label: 'Baseline', value: 'baseline' },
-  { label: 'Stretch', value: 'stretch' },
+  { label: 'Início (flex-start)', value: 'flex-start' },
+  { label: 'Fim (flex-end)', value: 'flex-end' },
+  { label: 'Centro (center)', value: 'center' },
+  { label: 'Linha de Base (baseline)', value: 'baseline' },
+  { label: 'Esticar (stretch)', value: 'stretch' },
 ];
 
 const justifyContentOptions = [
-  { label: 'Start', value: 'flex-start' },
-  { label: 'End', value: 'flex-end' },
-  { label: 'Center', value: 'center' },
-  { label: 'Space Between', value: 'space-between' },
-  { label: 'Space Around', value: 'space-around' },
-  { label: 'Space Evenly', value: 'space-evenly' },
+  { label: 'Início (flex-start)', value: 'flex-start' },
+  { label: 'Fim (flex-end)', value: 'flex-end' },
+  { label: 'Centro (center)', value: 'center' },
+  { label: 'Espaço Entre (space-between)', value: 'space-between' },
+  { label: 'Espaço ao Redor (space-around)', value: 'space-around' },
+  { label: 'Espaço Uniforme (space-evenly)', value: 'space-evenly' },
 ];
 
 const objectFitOptions = [
-    { label: 'Fill', value: 'fill' },
-    { label: 'Contain', value: 'contain' },
-    { label: 'Cover', value: 'cover' },
-    { label: 'None', value: 'none' },
-    { label: 'Scale Down', value: 'scale-down' },
+    { label: 'Preencher (fill)', value: 'fill' },
+    { label: 'Conter (contain)', value: 'contain' },
+    { label: 'Cobrir (cover)', value: 'cover' },
+    { label: 'Nenhum (none)', value: 'none' },
+    { label: 'Reduzir Escala (scale-down)', value: 'scale-down' },
 ];
-
-// Get a list of Lucide icon names for a dropdown (optional, text input is simpler for now)
-// const lucideIconNames = Object.keys(LucideIcons).filter(key => key !== 'createLucideIcon' && key !== 'icons');
-// const iconOptions = lucideIconNames.map(name => ({ label: name, value: name }));
-
 
 export function StyleConfigurationPanel() {
   const { selectedElement, updateElementStyle, updateElementContent, updateElementAttribute, updateElementName, deleteElement, addElement } = useEditor();
@@ -105,13 +100,12 @@ export function StyleConfigurationPanel() {
   useEffect(() => {
     if (selectedElement) {
       setLocalStyles(selectedElement.styles || {});
-      // For input, use attributes.value. For textarea and others, use content.
       if (selectedElement.type === 'input') {
         setContent(String(selectedElement.attributes?.value || ''));
       } else {
         setContent(selectedElement.content || '');
       }
-      setElementName(selectedElement.name || `Element ${selectedElement.id.substring(0,4)}`);
+      setElementName(selectedElement.name || `Elemento ${selectedElement.id.substring(0,4)}`);
       setAttributes(selectedElement.attributes || {});
     } else {
       setLocalStyles({});
@@ -124,7 +118,7 @@ export function StyleConfigurationPanel() {
   if (!selectedElement) {
     return (
       <div className="p-4 border-l h-full bg-card text-muted-foreground flex items-center justify-center">
-        <p className="text-sm">Select an element to configure its style.</p>
+        <p className="text-sm">Selecione um elemento para configurar.</p>
       </div>
     );
   }
@@ -138,7 +132,6 @@ export function StyleConfigurationPanel() {
   const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const newContent = e.target.value;
     setContent(newContent);
-    // updateElementContent handles if it should be content or attribute.value
     updateElementContent(selectedElement.id, newContent);
   };
   
@@ -148,14 +141,14 @@ export function StyleConfigurationPanel() {
   };
   
   const handleAttributeChangeLocal = (attrName: string, value: string | number) => {
-    const newAttributes = { ...attributes, [attrName]: String(value) }; // Ensure value is string for consistency
-    setAttributes(newAttributes); // Update local state for controlled input
+    const newAttributes = { ...attributes, [attrName]: String(value) };
+    setAttributes(newAttributes);
     updateElementAttribute(selectedElement.id, attrName, String(value));
   };
 
   const handleAiStyleSuggest = async () => {
     if (!aiPrompt.trim()) {
-      toast({ title: "AI Prompt Empty", description: "Please enter a description for the style you want.", variant: "destructive" });
+      toast({ title: "Prompt da IA Vazio", description: "Por favor, descreva o estilo que você deseja.", variant: "destructive" });
       return;
     }
     setIsAiLoading(true);
@@ -165,13 +158,13 @@ export function StyleConfigurationPanel() {
       const result = await suggestElementStyle(input);
       if (result.cssRules) {
         setAiSuggestedCss(result.cssRules);
-        toast({ title: "AI Suggestion Received", description: "Review the suggested CSS below." });
+        toast({ title: "Sugestão da IA Recebida", description: "Revise o CSS sugerido abaixo." });
       } else {
-        toast({ title: "AI Suggestion Failed", description: "The AI could not generate styles for this prompt.", variant: "destructive" });
+        toast({ title: "Falha na Sugestão da IA", description: "A IA não conseguiu gerar estilos para este prompt.", variant: "destructive" });
       }
     } catch (error) {
-      console.error("AI style suggestion error:", error);
-      toast({ title: "AI Error", description: "An error occurred while fetching AI suggestions.", variant: "destructive" });
+      console.error("Erro na sugestão de estilo da IA:", error);
+      toast({ title: "Erro na IA", description: "Ocorreu um erro ao buscar sugestões da IA.", variant: "destructive" });
     } finally {
       setIsAiLoading(false);
     }
@@ -183,12 +176,11 @@ export function StyleConfigurationPanel() {
     const newStyles = { ...localStyles, ...suggestedStylesObject };
     setLocalStyles(newStyles);
     updateElementStyle(selectedElement.id, newStyles);
-    toast({ title: "AI Styles Applied", description: "The suggested styles have been applied to the element." });
+    toast({ title: "Estilos da IA Aplicados", description: "Os estilos sugeridos foram aplicados ao elemento." });
   };
   
   const handleAddListItem = () => {
     if (selectedElement && (selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li')) {
-      // If 'li' is selected, add to its parent list. Otherwise, add to the selected list.
       const parentListId = selectedElement.type === 'li' ? findParentListId(selectedElement.id) : selectedElement.id;
       if (parentListId) {
         addElement('li', parentListId);
@@ -196,49 +188,39 @@ export function StyleConfigurationPanel() {
     }
   };
 
-  // This helper function would need to be implemented or EditorContext adapted to find parent
   const findParentListId = (childId: string): string | undefined => {
-    // This is a simplified placeholder. A real implementation would traverse the elements tree.
-    // For now, we assume if an 'li' is selected, its direct parent in the flat 'elements' array (if it exists and is a list) is the target.
-    // This needs robust implementation if deep nesting is common.
-    // Or, the addElement in context could be smarter.
-    // For now, if selectedElement is 'li', assume its parent is what we need, but this is not robust for deep nesting
-    // console.warn("findParentListId is a placeholder and needs robust implementation for deep nesting.");
-    return selectedElement?.id; // This is incorrect if LI is selected.
-                                // We need a way to get parent ID from context or pass it
+    // Placeholder - needs robust implementation
+    return selectedElement?.id; 
   };
 
 
   const renderContentInput = () => {
-    // p, h1-h3, button, span, li, a, label use `content` for their text
-    // textarea uses `content` for its value
     if (['p', 'h1', 'h2', 'h3', 'button', 'span', 'li', 'a', 'label', 'textarea'].includes(selectedElement.type)) {
       const isTextarea = selectedElement.type === 'textarea';
       return (
         <div className="space-y-1">
-          <Label htmlFor="elementContent" className="text-xs">{isTextarea ? 'Value' : 'Content'}</Label>
+          <Label htmlFor="elementContent" className="text-xs">{isTextarea ? 'Valor' : 'Conteúdo do Texto'}</Label>
           <Textarea
             id="elementContent"
-            value={content} // `content` state is already correctly set for input/textarea
+            value={content}
             onChange={handleContentChange}
-            placeholder={isTextarea ? "Enter text for textarea..." : "Enter text content..."}
+            placeholder={isTextarea ? "Digite o texto para a área de texto..." : "Digite o conteúdo do texto..."}
             className="text-xs"
             rows={isTextarea ? 4 : 2}
           />
         </div>
       );
     }
-    // Input type="text" uses attribute `value`
     if (selectedElement.type === 'input') {
          return (
             <div className="space-y-1">
-                <Label htmlFor="inputValue" className="text-xs">Value</Label>
+                <Label htmlFor="inputValue" className="text-xs">Valor</Label>
                 <Input
                     id="inputValue"
                     type="text"
                     value={String(attributes.value || '')}
                     onChange={(e) => handleAttributeChangeLocal('value', e.target.value)}
-                    placeholder="Enter input value"
+                    placeholder="Digite o valor do campo"
                     className="h-8 text-xs"
                 />
             </div>
@@ -254,24 +236,24 @@ export function StyleConfigurationPanel() {
       commonInputs.push(
         <React.Fragment key="img-attrs">
           <div className="space-y-1">
-            <Label htmlFor="imgSrc" className="text-xs">Image Source (URL)</Label>
+            <Label htmlFor="imgSrc" className="text-xs">URL da Imagem</Label>
             <Input
               id="imgSrc"
               type="url"
               value={attributes.src as string || ''}
               onChange={(e) => handleAttributeChangeLocal('src', e.target.value)}
-              placeholder="https://example.com/image.png"
+              placeholder="https://exemplo.com/imagem.png"
               className="h-8 text-xs"
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="imgAlt" className="text-xs">Alt Text</Label>
+            <Label htmlFor="imgAlt" className="text-xs">Texto Alternativo (Alt)</Label>
             <Input
               id="imgAlt"
               type="text"
               value={attributes.alt as string || ''}
               onChange={(e) => handleAttributeChangeLocal('alt', e.target.value)}
-              placeholder="Descriptive text for image"
+              placeholder="Descrição da imagem"
               className="h-8 text-xs"
             />
           </div>
@@ -281,19 +263,19 @@ export function StyleConfigurationPanel() {
       commonInputs.push(
         <React.Fragment key="icon-attrs">
           <div className="space-y-1">
-            <Label htmlFor="iconName" className="text-xs">Icon Name (Lucide)</Label>
+            <Label htmlFor="iconName" className="text-xs">Nome do Ícone (Lucide)</Label>
             <Input
               id="iconName"
               type="text"
               value={attributes.iconName as string || 'Smile'}
               onChange={(e) => handleAttributeChangeLocal('iconName', e.target.value)}
-              placeholder="e.g., Smile, Home, Settings"
+              placeholder="Ex: Smile, Home, Settings"
               className="h-8 text-xs"
             />
-            <p className="text-xs text-muted-foreground">Find names at lucide.dev</p>
+            <p className="text-xs text-muted-foreground">Encontre nomes em lucide.dev</p>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="iconSize" className="text-xs">Size (px)</Label>
+            <Label htmlFor="iconSize" className="text-xs">Tamanho (px)</Label>
             <Input
               id="iconSize"
               type="number"
@@ -304,7 +286,7 @@ export function StyleConfigurationPanel() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="iconStrokeWidth" className="text-xs">Stroke Width</Label>
+            <Label htmlFor="iconStrokeWidth" className="text-xs">Largura do Traço</Label>
             <Input
               id="iconStrokeWidth"
               type="number"
@@ -320,13 +302,13 @@ export function StyleConfigurationPanel() {
     } else if (selectedElement.type === 'a') {
       commonInputs.push(
         <div className="space-y-1" key="a-href">
-          <Label htmlFor="linkHref" className="text-xs">Link URL (href)</Label>
+          <Label htmlFor="linkHref" className="text-xs">URL do Link (href)</Label>
           <Input
             id="linkHref"
             type="url"
             value={attributes.href as string || ''}
             onChange={(e) => handleAttributeChangeLocal('href', e.target.value)}
-            placeholder="https://example.com"
+            placeholder="https://exemplo.com"
             className="h-8 text-xs"
           />
         </div>
@@ -334,30 +316,30 @@ export function StyleConfigurationPanel() {
     } else if (selectedElement.type === 'input' || selectedElement.type === 'textarea') {
         commonInputs.push(
             <div className="space-y-1" key={`${selectedElement.type}-placeholder`}>
-                <Label htmlFor={`${selectedElement.type}Placeholder`} className="text-xs">Placeholder</Label>
+                <Label htmlFor={`${selectedElement.type}Placeholder`} className="text-xs">Texto de Exemplo (Placeholder)</Label>
                 <Input
                     id={`${selectedElement.type}Placeholder`}
                     type="text"
                     value={attributes.placeholder as string || ''}
                     onChange={(e) => handleAttributeChangeLocal('placeholder', e.target.value)}
-                    placeholder="Enter placeholder text"
+                    placeholder="Digite o texto de exemplo"
                     className="h-8 text-xs"
                 />
             </div>
         );
     }
     if (selectedElement.type === 'input') {
-        // Could add 'type' attribute editor here if more input types are supported
+        // Poderia adicionar editor do atributo 'type' aqui
     } else if (selectedElement.type === 'label') {
         commonInputs.push(
             <div className="space-y-1" key="label-for">
-                <Label htmlFor="labelFor" className="text-xs">For (Input ID)</Label>
+                <Label htmlFor="labelFor" className="text-xs">Associar a (ID do Input)</Label>
                 <Input
                     id="labelFor"
                     type="text"
                     value={attributes.htmlFor as string || ''}
                     onChange={(e) => handleAttributeChangeLocal('htmlFor', e.target.value)}
-                    placeholder="ID of the input element"
+                    placeholder="ID do campo de input"
                     className="h-8 text-xs"
                 />
             </div>
@@ -373,53 +355,52 @@ export function StyleConfigurationPanel() {
   return (
     <div className="p-4 border-l h-full bg-card flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Configure</h2>
-        <Button variant="ghost" size="icon" onClick={() => deleteElement(selectedElement.id)} aria-label="Delete element">
+        <h2 className="text-lg font-semibold text-foreground">Configurar Elemento</h2>
+        <Button variant="ghost" size="icon" onClick={() => deleteElement(selectedElement.id)} aria-label="Excluir elemento">
             <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
       <ScrollArea className="flex-grow pr-2">
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="elementName" className="text-xs">Element Name</Label>
-            <Input id="elementName" value={elementName} onChange={handleNameChange} className="h-8 text-xs" />
+            <Label htmlFor="elementName" className="text-xs">Nome do Elemento</Label>
+            <Input id="elementName" value={elementName} onChange={handleNameChange} className="h-8 text-xs" placeholder="Ex: Botão Principal"/>
           </div>
 
           {renderContentInput()}
           
           {(selectedElement.type === 'ul' || selectedElement.type === 'ol' || selectedElement.type === 'li') && (
             <Button onClick={handleAddListItem} variant="outline" size="sm" className="w-full mt-2">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add List Item
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Item à Lista
             </Button>
           )}
 
 
           <Accordion type="multiple" defaultValue={['attributes', 'layout', 'typography', 'appearance']} className="w-full">
              <AccordionItem value="attributes">
-                <AccordionTrigger className="text-sm font-medium py-2">Attributes</AccordionTrigger>
+                <AccordionTrigger className="text-sm font-medium py-2">Atributos HTML</AccordionTrigger>
                 <AccordionContent className="space-y-2 pt-1">
                     {renderAttributeInputs()}
                     {selectedElement.type === 'img' && (
-                        <StylePropertyInput label="Object Fit" propertyName="objectFit" value={localStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Select object fit"/>
+                        <StylePropertyInput label="Ajuste do Objeto (Object Fit)" propertyName="objectFit" value={localStyles.objectFit} onChange={handleStyleChange} type="select" options={objectFitOptions} placeholder="Selecione o ajuste"/>
                     )}
                 </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="layout">
-              <AccordionTrigger className="text-sm font-medium py-2">Layout & Spacing</AccordionTrigger>
+              <AccordionTrigger className="text-sm font-medium py-2">Layout e Espaçamento</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Width" propertyName="width" value={localStyles.width} onChange={handleStyleChange} placeholder="auto / 100px / 50%" />
-                <StylePropertyInput label="Height" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
-                <StylePropertyInput label="Padding" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px or 10px 20px" />
-                <StylePropertyInput label="Margin" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px or 0 auto" />
+                <StylePropertyInput label="Largura" propertyName="width" value={localStyles.width} onChange={handleStyleChange} placeholder="auto / 100px / 50%" />
+                <StylePropertyInput label="Altura" propertyName="height" value={localStyles.height} onChange={handleStyleChange} placeholder="auto / 100px" />
+                <StylePropertyInput label="Preenchimento (Padding)" propertyName="padding" value={localStyles.padding} onChange={handleStyleChange} placeholder="10px ou 10px 20px" />
+                <StylePropertyInput label="Margem (Margin)" propertyName="margin" value={localStyles.margin} onChange={handleStyleChange} placeholder="10px ou 0 auto" />
                 {(canHaveChildren || selectedElement.type === 'button' || selectedElement.type === 'input' || selectedElement.type === 'textarea' || selectedElement.type === 'p' || selectedElement.type === 'h1' || selectedElement.type === 'h2' || selectedElement.type === 'h3' || selectedElement.type === 'span' || selectedElement.type === 'label' || selectedElement.type === 'a' || selectedElement.type === 'icon' ) && (
                   <>
-                    <StylePropertyInput label="Display" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Select display type"/>
+                    <StylePropertyInput label="Exibição (Display)" propertyName="display" value={localStyles.display} onChange={handleStyleChange} type="select" options={displayOptions} placeholder="Selecione o tipo de display"/>
                     {isFlexOrGrid && (
                       <>
-                        <StylePropertyInput label="Align Items" propertyName="alignItems" value={localStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Align items"/>
-                        <StylePropertyInput label="Justify Content" propertyName="justifyContent" value={localStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justify content"/>
-                        {/* Add more flex/grid properties like flexDirection, flexWrap, gap etc. as needed */}
+                        <StylePropertyInput label="Alinhar Itens (Align Items)" propertyName="alignItems" value={localStyles.alignItems} onChange={handleStyleChange} type="select" options={alignItemsOptions} placeholder="Alinhar itens"/>
+                        <StylePropertyInput label="Justificar Conteúdo (Justify Content)" propertyName="justifyContent" value={localStyles.justifyContent} onChange={handleStyleChange} type="select" options={justifyContentOptions} placeholder="Justificar conteúdo"/>
                       </>
                     )}
                   </>
@@ -428,55 +409,55 @@ export function StyleConfigurationPanel() {
             </AccordionItem>
 
             <AccordionItem value="typography">
-              <AccordionTrigger className="text-sm font-medium py-2">Typography</AccordionTrigger>
+              <AccordionTrigger className="text-sm font-medium py-2">Tipografia</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Font Size" propertyName="fontSize" value={localStyles.fontSize} onChange={handleStyleChange} placeholder="16px / 1.2em" />
-                <StylePropertyInput label="Font Color" propertyName="color" value={localStyles.color} onChange={handleStyleChange} type="color" />
-                <StylePropertyInput label="Font Family" propertyName="fontFamily" value={localStyles.fontFamily} onChange={handleStyleChange} type="select" options={commonFontFamilies} placeholder="Select font"/>
-                <StylePropertyInput label="Font Weight" propertyName="fontWeight" value={localStyles.fontWeight} onChange={handleStyleChange} type="select" options={fontWeightOptions} placeholder="Select weight" />
-                <StylePropertyInput label="Text Align" propertyName="textAlign" value={localStyles.textAlign} onChange={handleStyleChange} type="select" options={textAlignOptions} placeholder="Select alignment"/>
-                <StylePropertyInput label="Line Height" propertyName="lineHeight" value={localStyles.lineHeight} onChange={handleStyleChange} placeholder="1.5 / 20px" />
+                <StylePropertyInput label="Tamanho da Fonte" propertyName="fontSize" value={localStyles.fontSize} onChange={handleStyleChange} placeholder="16px / 1.2em" />
+                <StylePropertyInput label="Cor da Fonte" propertyName="color" value={localStyles.color} onChange={handleStyleChange} type="color" />
+                <StylePropertyInput label="Família da Fonte" propertyName="fontFamily" value={localStyles.fontFamily} onChange={handleStyleChange} type="select" options={commonFontFamilies} placeholder="Selecione a fonte"/>
+                <StylePropertyInput label="Peso da Fonte" propertyName="fontWeight" value={localStyles.fontWeight} onChange={handleStyleChange} type="select" options={fontWeightOptions} placeholder="Selecione o peso" />
+                <StylePropertyInput label="Alinhamento do Texto" propertyName="textAlign" value={localStyles.textAlign} onChange={handleStyleChange} type="select" options={textAlignOptions} placeholder="Selecione o alinhamento"/>
+                <StylePropertyInput label="Altura da Linha" propertyName="lineHeight" value={localStyles.lineHeight} onChange={handleStyleChange} placeholder="1.5 / 20px" />
               </AccordionContent>
             </AccordionItem>
             
             <AccordionItem value="appearance">
-              <AccordionTrigger className="text-sm font-medium py-2">Appearance</AccordionTrigger>
+              <AccordionTrigger className="text-sm font-medium py-2">Aparência</AccordionTrigger>
               <AccordionContent className="space-y-2 pt-1">
-                <StylePropertyInput label="Background Color" propertyName="backgroundColor" value={localStyles.backgroundColor} onChange={handleStyleChange} type="color" />
-                <StylePropertyInput label="Border" propertyName="border" value={localStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
-                <StylePropertyInput label="Border Radius" propertyName="borderRadius" value={localStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
-                <StylePropertyInput label="Opacity" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
-                 <StylePropertyInput label="Box Shadow" propertyName="boxShadow" value={localStyles.boxShadow} onChange={handleStyleChange} placeholder="2px 2px 5px #888" />
+                <StylePropertyInput label="Cor de Fundo" propertyName="backgroundColor" value={localStyles.backgroundColor} onChange={handleStyleChange} type="color" />
+                <StylePropertyInput label="Borda" propertyName="border" value={localStyles.border} onChange={handleStyleChange} placeholder="1px solid #000" />
+                <StylePropertyInput label="Raio da Borda" propertyName="borderRadius" value={localStyles.borderRadius} onChange={handleStyleChange} placeholder="5px / 50%" />
+                <StylePropertyInput label="Opacidade" propertyName="opacity" value={localStyles.opacity} onChange={handleStyleChange} type="number" placeholder="0.0-1.0" step="0.1" min="0" max="1" />
+                 <StylePropertyInput label="Sombra da Caixa (Box Shadow)" propertyName="boxShadow" value={localStyles.boxShadow} onChange={handleStyleChange} placeholder="2px 2px 5px #888" />
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="ai-styling">
               <AccordionTrigger className="text-sm font-medium py-2 flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-accent"/> AI Styling (Beta)
+                <Wand2 className="h-4 w-4 text-accent"/> Estilização com IA (Beta)
               </AccordionTrigger>
               <AccordionContent className="space-y-3 pt-1">
                 <div>
-                  <Label htmlFor="aiPrompt" className="text-xs">Describe the style</Label>
+                  <Label htmlFor="aiPrompt" className="text-xs">Descreva o estilo desejado</Label>
                   <Textarea
                     id="aiPrompt"
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="e.g., 'A modern, clean button with a slight shadow'"
+                    placeholder="Ex: 'Um botão moderno e limpo com uma leve sombra'"
                     className="mt-1 text-xs"
                     rows={3}
                   />
                 </div>
                 <Button onClick={handleAiStyleSuggest} disabled={isAiLoading} size="sm" className="w-full">
-                  {isAiLoading ? 'Generating...' : 'Suggest Style with AI'}
+                  {isAiLoading ? 'Gerando...' : 'Sugerir Estilo com IA'}
                 </Button>
                 {aiSuggestedCss && (
                   <div className="mt-2 space-y-2">
-                    <Label className="text-xs">Suggested CSS:</Label>
+                    <Label className="text-xs">CSS Sugerido:</Label>
                     <pre className="bg-muted p-2 rounded-md text-xs whitespace-pre-wrap overflow-x-auto max-h-32">
                       <code>{aiSuggestedCss}</code>
                     </pre>
                     <Button onClick={applyAiSuggestedStyle} size="sm" variant="outline" className="w-full">
-                      Apply Suggested Style
+                      Aplicar Estilo Sugerido
                     </Button>
                   </div>
                 )}

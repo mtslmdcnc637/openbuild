@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -51,7 +52,7 @@ export function StylePropertyInput({
       {type === 'select' && options ? (
         <Select value={value as string || ""} onValueChange={handleSelectChange}>
           <SelectTrigger id={id} className="h-8 text-xs">
-            <SelectValue placeholder={placeholder || `Select ${label}`} />
+            <SelectValue placeholder={placeholder || `Selecione ${label.toLowerCase()}`} />
           </SelectTrigger>
           <SelectContent>
             {options.map(option => (
