@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useEditor } from '@/contexts/EditorContext';
 import { generateHtmlDocument } from '@/lib/html-generator';
 import { downloadJsonFile, downloadHtmlFile } from '@/lib/download-utils';
-import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink, Save, Upload, Info } from 'lucide-react';
+import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink, Save, Upload, Info, LayoutDashboard } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import type { ViewportMode, ProjectData, EditorElement, PageSettings } from '@/types/editor';
 import { cn } from '@/lib/utils';
@@ -174,7 +174,15 @@ export function EditorLayout() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       <header className="flex items-center justify-between p-3 border-b shadow-sm sticky top-0 bg-card z-10">
-        <CodeCanvasLogo />
+        <div className="flex items-center gap-4">
+          <CodeCanvasLogo />
+          <Button variant="outline" size="sm" asChild>
+            <a href="https://pageforge.click/dashboard" target="_blank" rel="noopener noreferrer">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Dashboard
+            </a>
+          </Button>
+        </div>
         
         <div className="flex items-center gap-2">
           {viewportButtons.map(({ mode, icon: Icon, label }) => (
@@ -280,5 +288,4 @@ export function EditorLayout() {
     </div>
   );
 }
-
     
