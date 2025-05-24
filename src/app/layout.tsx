@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Code Canvas',
-  description: 'Crie páginas HTML com arrastar e soltar, por Firebase Studio.',
+  title: 'PageForge: OpenBuild',
+  description: 'Construa páginas web com liberdade total usando o OpenBuild do PageForge.',
 };
 
 export default function RootLayout({
