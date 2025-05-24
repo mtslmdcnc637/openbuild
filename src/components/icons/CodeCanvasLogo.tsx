@@ -7,10 +7,10 @@ export function CodeCanvasLogo(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 200 50"
       width="150"
       height="37.5" // Maintain aspect ratio
-      aria-labelledby="codeCanvasLogoTitle"
+      aria-labelledby="pageForgeOpenBuildLogoTitle"
       {...props}
     >
-      <title id="codeCanvasLogoTitle">Code Canvas Logo</title>
+      <title id="pageForgeOpenBuildLogoTitle">PageForge OpenBuild Logo</title>
       <style>
         {`
           .logo-text {
@@ -28,7 +28,7 @@ export function CodeCanvasLogo(props: SVGProps<SVGSVGElement>) {
         `}
       </style>
       <text x="10" y="35" className="logo-brackets">{"<"}</text>
-      <text x="35" y="35" className="logo-text">CodeCanvas</text>
+      <text x="35" y="35" className="logo-text">OpenBuild</text>
       <text x="170" y="35" className="logo-brackets">{"/>"}</text>
     </svg>
   );
