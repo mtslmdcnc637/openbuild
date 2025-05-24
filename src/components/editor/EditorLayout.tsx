@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button';
 import { useEditor } from '@/contexts/EditorContext';
 import { generateHtmlDocument } from '@/lib/html-generator';
 import { downloadJsonFile, downloadHtmlFile } from '@/lib/download-utils';
-import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink, Save, Upload } from 'lucide-react';
+import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink, Save, Upload, Info } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import type { ViewportMode, ProjectData, EditorElement, PageSettings } from '@/types/editor';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { SaveWarningDialog } from './SaveWarningDialog';
 
 
 export function EditorLayout() {
@@ -32,6 +33,20 @@ export function EditorLayout() {
   const [isBrowserFullScreen, setIsBrowserFullScreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [showSaveWarning, setShowSaveWarning] = useState(false);
+
+  useEffect(() => {
+    const warningDismissed = localStorage.getItem('openBuildSaveWarningDismissed');
+    if (!warningDismissed) {
+      setShowSaveWarning(true);
+    }
+  }, []);
+
+  const handleDismissSaveWarning = () => {
+    localStorage.setItem('openBuildSaveWarningDismissed', 'true');
+    setShowSaveWarning(false);
+  };
+
 
   const handleExportHtml = () => {
     const htmlContent = generateHtmlDocument(elements, pageSettings);
@@ -51,7 +66,7 @@ export function EditorLayout() {
     // URL.revokeObjectURL(url); // Revoke might be too soon if the new tab hasn't loaded. Browsers handle this.
   };
 
-  const handleSaveProject = () => {
+  const handleDownloadProject = () => {
     const projectData: ProjectData = {
       openBuildVersion: "1.0.0", // Versioning for future compatibility
       pageSettings,
@@ -60,8 +75,8 @@ export function EditorLayout() {
     const safePageTitle = pageSettings.pageTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'projeto_openbuild';
     downloadJsonFile(projectData, `${safePageTitle}.openbuild`);
     toast({
-      title: "Projeto Salvo",
-      description: `Seu projeto foi salvo como ${safePageTitle}.openbuild.`,
+      title: "Projeto Baixado",
+      description: `Seu projeto foi baixado como ${safePageTitle}.openbuild. Lembre-se que ele é salvo localmente.`,
     });
   };
 
@@ -207,9 +222,9 @@ export function EditorLayout() {
         </div>
 
         <div className="flex items-center gap-2">
-           <Button onClick={handleSaveProject} variant="outline" size="sm">
+           <Button onClick={handleDownloadProject} variant="outline" size="sm">
             <Save className="mr-2 h-4 w-4" />
-            Salvar Projeto
+            Baixar Projeto
           </Button>
           <Button onClick={handleLoadProjectClick} variant="outline" size="sm">
             <Upload className="mr-2 h-4 w-4" />
@@ -229,6 +244,16 @@ export function EditorLayout() {
           <Button onClick={handleExportHtml} variant="default" size="sm">
             <Download className="mr-2 h-4 w-4" />
             Exportar HTML
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowSaveWarning(true)}
+            aria-label="Informações sobre salvamento"
+            title="Informações sobre salvamento"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            <Info className="h-5 w-5" />
           </Button>
         </div>
       </header>
@@ -251,6 +276,9 @@ export function EditorLayout() {
         )}
       </div>
       <Toaster />
+      <SaveWarningDialog isOpen={showSaveWarning} onDismiss={handleDismissSaveWarning} />
     </div>
   );
 }
+
+    
