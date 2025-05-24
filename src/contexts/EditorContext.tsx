@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { EditorElement, DraggableItemType, ViewportMode, ResponsiveStyles, PageSettings, EditorContextType } from '@/types/editor';
 import { AVAILABLE_ELEMENTS } from '@/lib/constants';
@@ -21,7 +21,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
   const [viewportMode, setViewportModeInternal] = useState<ViewportMode>('desktop');
-  const [pageSettings, setPageSettings] = useState<PageSettings>(initialPageSettings);
+  const [pageSettings, setPageSettingsState] = useState<PageSettings>(initialPageSettings); // Renamed to avoid conflict
   const [isCanvasFullScreen, setIsCanvasFullScreen] = useState<boolean>(false);
 
   const setViewportMode = (mode: ViewportMode) => {
@@ -29,7 +29,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const updatePageSetting = useCallback(<K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => {
-    setPageSettings(prevSettings => ({
+    setPageSettingsState(prevSettings => ({ // Use setPageSettingsState
       ...prevSettings,
       [settingName]: value,
     }));
@@ -108,8 +108,6 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const baseId = crypto.randomUUID();
     let newElementToAdd: EditorElement | null = null;
 
-    const commonResponsiveStyles: ResponsiveStyles = { desktop: {} };
-
     if (itemType === 'card') {
       const cardContainer: EditorElement = {
         id: baseId,
@@ -174,7 +172,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const elDetails = AVAILABLE_ELEMENTS.find(e => e.type === childTemplate.type);
         if (!elDetails) {
           console.error(`Detalhes do elemento não encontrados para o tipo: ${childTemplate.type}`);
-          return null; // Should not happen if constants are correct
+          return null; 
         }
         return {
             id: crypto.randomUUID(),
@@ -234,7 +232,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         name: `${itemTemplate.label} ${Math.floor(Math.random() * 1000)}`,
         content: itemTemplate.defaultContent,
         attributes: itemTemplate.defaultAttributes ? { ...itemTemplate.defaultAttributes } : {},
-        styles: { desktop: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {} },
+        styles: { 
+          desktop: itemTemplate.defaultStyles ? { ...itemTemplate.defaultStyles } : {},
+          tablet: {},
+          mobile: {}
+        },
         children: [],
       };
 
@@ -244,7 +246,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           id: crypto.randomUUID(), type: 'li', name: 'Item da Lista',
           content: listItemTemplate?.defaultContent || 'Item da lista',
           attributes: listItemTemplate?.defaultAttributes || {},
-          styles: { desktop: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' } },
+          styles: { 
+            desktop: listItemTemplate?.defaultStyles || { marginBottom: '0.25rem' },
+            tablet: {},
+            mobile: {}
+          },
           children: [],
         };
         newElementToAdd.children.push(listItem);
@@ -367,6 +373,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         deleteElement,
         moveElement,
         setElements,
+        setPageSettings: setPageSettingsState, // Expose setPageSettingsState
         setViewportMode,
         updatePageSetting,
         toggleCanvasFullScreen,

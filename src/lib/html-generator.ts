@@ -1,16 +1,20 @@
 
 import type { EditorElement, PageSettings } from '@/types/editor';
 import { convertToInlineStyle } from './style-utils';
+// Importei a função de download de HTML do novo arquivo de utilitários
+// mas ela não será usada aqui, apenas a exportação de `downloadHtmlFile` de `download-utils.ts` será usada no EditorLayout.
 
 function generateElementHtml(element: EditorElement): string {
   const Tag = element.type;
+  // Para exportação, usamos principalmente os estilos desktop por enquanto
+  // A implementação completa de media queries seria um passo futuro.
   const styleString = convertToInlineStyle(element.styles.desktop);
 
   let attributesString = '';
   if (element.attributes) {
     attributesString = Object.entries(element.attributes)
-      .filter(([, value]) => value !== undefined && value !== null && value !== "" && typeof value !== 'object') // Ensure value is primitive
-      .map(([key, value]) => `${key}="${String(value).replace(/"/g, '&quot;')}"`) // Escape quotes
+      .filter(([, value]) => value !== undefined && value !== null && value !== "" && typeof value !== 'object') 
+      .map(([key, value]) => `${key}="${String(value).replace(/"/g, '&quot;')}"`) 
       .join(' ');
   }
 
@@ -18,7 +22,6 @@ function generateElementHtml(element: EditorElement): string {
 
   let content = element.content || '';
   if (Tag === 'img' || Tag === 'hr' || (Tag === 'input' && element.attributes?.type !== 'submit' && element.attributes?.type !== 'button')) {
-    // Void elements or inputs that don't take content between tags
     return `<${Tag} style="${styleString}" ${attributesString} />`;
   }
 
@@ -41,7 +44,7 @@ export function generateHtmlDocument(elements: EditorElement[], pageSettings: Pa
   }
   if (pageSettings.bodyBackgroundImageUrl) {
     bodyStyles.push(`background-image: url('${pageSettings.bodyBackgroundImageUrl}');`);
-    bodyStyles.push(`background-size: cover;`); // Sensible defaults
+    bodyStyles.push(`background-size: cover;`); 
     bodyStyles.push(`background-position: center;`);
     bodyStyles.push(`background-repeat: no-repeat;`);
   }
@@ -106,18 +109,16 @@ export function generateHtmlDocument(elements: EditorElement[], pageSettings: Pa
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${pageSettings.pageTitle || 'Página Criada com Code Canvas'}</title>
+    <title>${pageSettings.pageTitle || 'Página Criada com PageForge OpenBuild'}</title>
     <style>
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-        /* Base styles from globals.css, might be overridden by inline styles */
         --background: 220 13% 95%; 
         --foreground: 215 25% 27%; 
         background-color: hsl(var(--background)); 
         color: hsl(var(--foreground));
       }
-      /* Element-specific styles are applied inline via generateElementHtml */
     </style>
     ${headScripts}
 </head>
@@ -126,15 +127,4 @@ export function generateHtmlDocument(elements: EditorElement[], pageSettings: Pa
     ${bodyContent}
 </body>
 </html>`;
-}
-
-export function downloadHtmlFile(htmlContent: string, filename: string = "code-canvas-page.html"): void {
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
 }

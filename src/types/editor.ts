@@ -1,5 +1,5 @@
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 
 export type EditorElementType =
   | 'div'
@@ -74,6 +74,13 @@ export interface PageSettings {
   googleTagManagerId: string;
 }
 
+export interface ProjectData {
+  openBuildVersion: string;
+  pageSettings: PageSettings;
+  elements: EditorElement[];
+}
+
+
 export interface EditorContextType {
   elements: EditorElement[];
   selectedElement: EditorElement | null;
@@ -89,7 +96,8 @@ export interface EditorContextType {
   selectElement: (elementId: string | null) => void;
   deleteElement: (elementId: string) => void;
   moveElement: (draggedId: string, targetId: string | null, position?: 'before' | 'after' | 'inside') => void;
-  setElements: React.Dispatch<React.SetStateAction<EditorElement[]>>;
+  setElements: Dispatch<SetStateAction<EditorElement[]>>;
+  setPageSettings: Dispatch<SetStateAction<PageSettings>>;
   setViewportMode: (mode: ViewportMode) => void;
   updatePageSetting: <K extends keyof PageSettings>(settingName: K, value: PageSettings[K]) => void;
   toggleCanvasFullScreen: () => void;

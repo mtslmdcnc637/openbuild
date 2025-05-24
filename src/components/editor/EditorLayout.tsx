@@ -1,26 +1,46 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DraggableElementsPanel } from './DraggableElementsPanel';
 import { CanvasArea } from './CanvasArea';
 import { StyleConfigurationPanel } from './StyleConfigurationPanel';
 import { CodeCanvasLogo } from '@/components/icons/CodeCanvasLogo';
 import { Button } from '@/components/ui/button';
 import { useEditor } from '@/contexts/EditorContext';
-import { generateHtmlDocument, downloadHtmlFile } from '@/lib/html-generator';
-import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink } from 'lucide-react';
+import { generateHtmlDocument } from '@/lib/html-generator';
+import { downloadJsonFile, downloadHtmlFile } from '@/lib/download-utils';
+import { Download, Monitor, Tablet, Smartphone, Eye, Maximize, Minimize, Expand, Shrink, Save, Upload } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
-import type { ViewportMode } from '@/types/editor';
+import type { ViewportMode, ProjectData, EditorElement, PageSettings } from '@/types/editor';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+
 
 export function EditorLayout() {
-  const { elements, viewportMode, setViewportMode, pageSettings, isCanvasFullScreen, toggleCanvasFullScreen } = useEditor();
+  const { 
+    elements, 
+    viewportMode, 
+    setViewportMode, 
+    pageSettings, 
+    isCanvasFullScreen, 
+    toggleCanvasFullScreen,
+    setElements,
+    setPageSettings,
+    selectElement
+  } = useEditor();
   const [isBrowserFullScreen, setIsBrowserFullScreen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleExportHtml = () => {
     const htmlContent = generateHtmlDocument(elements, pageSettings);
-    downloadHtmlFile(htmlContent, `${pageSettings.pageTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'pagina'}.html`);
+    const safePageTitle = pageSettings.pageTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'pagina_openbuild';
+    downloadHtmlFile(htmlContent, `${safePageTitle}.html`);
+     toast({
+      title: "HTML Exportado",
+      description: `Seu arquivo ${safePageTitle}.html foi baixado.`,
+    });
   };
 
   const handlePreview = () => {
@@ -30,6 +50,81 @@ export function EditorLayout() {
     window.open(url, '_blank');
     // URL.revokeObjectURL(url); // Revoke might be too soon if the new tab hasn't loaded. Browsers handle this.
   };
+
+  const handleSaveProject = () => {
+    const projectData: ProjectData = {
+      openBuildVersion: "1.0.0", // Versioning for future compatibility
+      pageSettings,
+      elements,
+    };
+    const safePageTitle = pageSettings.pageTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'projeto_openbuild';
+    downloadJsonFile(projectData, `${safePageTitle}.openbuild`);
+    toast({
+      title: "Projeto Salvo",
+      description: `Seu projeto foi salvo como ${safePageTitle}.openbuild.`,
+    });
+  };
+
+  const handleLoadProjectClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      toast({ title: "Nenhum arquivo selecionado", variant: "destructive" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const projectData = JSON.parse(text) as ProjectData;
+
+        // Basic validation
+        if (!projectData || typeof projectData.openBuildVersion !== 'string' || !projectData.pageSettings || !Array.isArray(projectData.elements)) {
+          throw new Error("Formato de arquivo inválido.");
+        }
+        
+        // Add more robust validation/migration based on openBuildVersion in the future if needed
+
+        setElements(projectData.elements as EditorElement[]); // Type assertion if needed
+        setPageSettings(projectData.pageSettings as PageSettings);
+        selectElement(null); // Clear current selection
+
+        toast({
+          title: "Projeto Carregado",
+          description: `O projeto "${file.name}" foi carregado com sucesso.`,
+        });
+
+      } catch (error) {
+        console.error("Erro ao carregar projeto:", error);
+        toast({
+          title: "Erro ao Carregar Projeto",
+          description: error instanceof Error ? error.message : "O arquivo selecionado não é um projeto OpenBuild válido.",
+          variant: "destructive",
+        });
+      } finally {
+        // Reset file input to allow loading the same file again if needed
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+       toast({
+          title: "Erro de Leitura do Arquivo",
+          description: "Não foi possível ler o arquivo selecionado.",
+          variant: "destructive",
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+    }
+    reader.readAsText(file);
+  };
+
 
   const viewportButtons: { mode: ViewportMode; icon: React.ElementType; label: string }[] = [
     { mode: 'desktop', icon: Monitor, label: 'Desktop' },
@@ -112,6 +207,21 @@ export function EditorLayout() {
         </div>
 
         <div className="flex items-center gap-2">
+           <Button onClick={handleSaveProject} variant="outline" size="sm">
+            <Save className="mr-2 h-4 w-4" />
+            Salvar Projeto
+          </Button>
+          <Button onClick={handleLoadProjectClick} variant="outline" size="sm">
+            <Upload className="mr-2 h-4 w-4" />
+            Carregar Projeto
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".openbuild,.json"
+            className="hidden"
+          />
           <Button onClick={handlePreview} variant="outline" size="sm">
             <Eye className="mr-2 h-4 w-4" />
             Visualizar
@@ -130,7 +240,7 @@ export function EditorLayout() {
         )}
         <main className={cn(
           "flex-1 overflow-y-auto bg-muted/40",
-          isCanvasFullScreen && "w-full" // Garante que o main ocupe toda a largura
+          isCanvasFullScreen && "w-full" 
         )}>
           <CanvasArea />
         </main>
